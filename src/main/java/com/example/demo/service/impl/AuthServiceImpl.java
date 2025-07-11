@@ -1,0 +1,225 @@
+package com.example.demo.service.impl;
+
+import com.example.demo.dto.LoginRequestDTO;
+import com.example.demo.dto.LoginResponseDTO;
+import com.example.demo.dto.PasswordUpdateDTO;
+import com.example.demo.dto.PasswordUpdateResponseDTO;
+import com.example.demo.dto.RegisterRequestDTO;
+import com.example.demo.dto.RegisterResponseDTO;
+import com.example.demo.dto.UtilisateurDTO;
+import com.example.demo.entity.Departement;
+import com.example.demo.entity.Utilisateur;
+import com.example.demo.repository.DepartementRepository;
+import com.example.demo.repository.UtilisateurRepository;
+import com.example.demo.service.AuthService;
+import com.example.demo.util.JwtUtil;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import java.util.Optional;
+
+@Service
+public class AuthServiceImpl implements AuthService {
+    
+    @Autowired
+    private UtilisateurRepository utilisateurRepository;
+    
+    @Autowired
+    private DepartementRepository departementRepository;
+    
+    @Autowired
+    private JwtUtil jwtUtil;
+    
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+    
+    @Override
+    public LoginResponseDTO login(LoginRequestDTO loginRequest) {
+        LoginResponseDTO response = new LoginResponseDTO();
+        
+        try {
+            // Find user by email
+            Optional<Utilisateur> userOpt = utilisateurRepository.findByEmail(loginRequest.getEmail());
+            
+            if (userOpt.isEmpty()) {
+                response.setSuccess(false);
+                response.setMessage("Email ou mot de passe incorrect");
+                return response;
+            }
+            
+            Utilisateur user = userOpt.get();
+            
+            // Check password using BCrypt
+            if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
+                response.setSuccess(false);
+                response.setMessage("Email ou mot de passe incorrect");
+                return response;
+            }
+            
+            // Generate JWT token
+            String token = jwtUtil.generateToken(user.getEmail(), user.getRole(), user.getId());
+            
+            // Convert user to DTO
+            UtilisateurDTO userDTO = new UtilisateurDTO();
+            userDTO.setId(user.getId());
+            userDTO.setNom(user.getNom());
+            userDTO.setEmail(user.getEmail());
+            userDTO.setRole(user.getRole());
+            userDTO.setMatricule(user.getMatricule());
+            if (user.getDepartement() != null) {
+                userDTO.setDepartementId(user.getDepartement().getId());
+            }
+            
+            // Set response
+            response.setSuccess(true);
+            response.setToken(token);
+            response.setUser(userDTO);
+            response.setMessage("Connexion réussie");
+            
+        } catch (Exception e) {
+            response.setSuccess(false);
+            response.setMessage("Erreur lors de la connexion: " + e.getMessage());
+        }
+        
+        return response;
+    }
+    
+    @Override
+    public RegisterResponseDTO register(RegisterRequestDTO registerRequest) {
+        RegisterResponseDTO response = new RegisterResponseDTO();
+        
+        try {
+            // Check if email already exists
+            if (utilisateurRepository.findByEmail(registerRequest.getEmail()).isPresent()) {
+                response.setSuccess(false);
+                response.setMessage("Un utilisateur avec cet email existe déjà");
+                return response;
+            }
+            
+            // Check if matricule already exists
+            if (utilisateurRepository.findByMatricule(registerRequest.getMatricule()).isPresent()) {
+                response.setSuccess(false);
+                response.setMessage("Un utilisateur avec ce matricule existe déjà");
+                return response;
+            }
+            
+            // Validate required fields
+            if (registerRequest.getNom() == null || registerRequest.getNom().trim().isEmpty()) {
+                response.setSuccess(false);
+                response.setMessage("Le nom est obligatoire");
+                return response;
+            }
+            
+            if (registerRequest.getEmail() == null || registerRequest.getEmail().trim().isEmpty()) {
+                response.setSuccess(false);
+                response.setMessage("L'email est obligatoire");
+                return response;
+            }
+            
+            if (registerRequest.getPassword() == null || registerRequest.getPassword().trim().isEmpty()) {
+                response.setSuccess(false);
+                response.setMessage("Le mot de passe est obligatoire");
+                return response;
+            }
+            
+            if (registerRequest.getMatricule() == null || registerRequest.getMatricule().trim().isEmpty()) {
+                response.setSuccess(false);
+                response.setMessage("Le matricule est obligatoire");
+                return response;
+            }
+            
+            // Create new user
+            Utilisateur newUser = new Utilisateur();
+            newUser.setNom(registerRequest.getNom().trim());
+            newUser.setEmail(registerRequest.getEmail().trim().toLowerCase());
+            newUser.setPassword(passwordEncoder.encode(registerRequest.getPassword())); // Hash password with BCrypt
+            newUser.setRole(registerRequest.getRole() != null ? registerRequest.getRole() : "USER");
+            newUser.setMatricule(registerRequest.getMatricule().trim());
+            
+            // Set department if provided
+            if (registerRequest.getDepartementId() != null) {
+                Optional<Departement> departementOpt = departementRepository.findById(registerRequest.getDepartementId());
+                if (departementOpt.isPresent()) {
+                    newUser.setDepartement(departementOpt.get());
+                }
+            }
+            
+            // Save user
+            Utilisateur savedUser = utilisateurRepository.save(newUser);
+            
+            // Convert to DTO for response
+            UtilisateurDTO userDTO = new UtilisateurDTO();
+            userDTO.setId(savedUser.getId());
+            userDTO.setNom(savedUser.getNom());
+            userDTO.setEmail(savedUser.getEmail());
+            userDTO.setRole(savedUser.getRole());
+            userDTO.setMatricule(savedUser.getMatricule());
+            if (savedUser.getDepartement() != null) {
+                userDTO.setDepartementId(savedUser.getDepartement().getId());
+            }
+            
+            // Set response
+            response.setSuccess(true);
+            response.setUser(userDTO);
+            response.setMessage("Inscription réussie");
+            
+        } catch (Exception e) {
+            response.setSuccess(false);
+            response.setMessage("Erreur lors de l'inscription: " + e.getMessage());
+        }
+        
+        return response;
+    }
+    
+    @Override
+    public PasswordUpdateResponseDTO updatePassword(Integer userId, PasswordUpdateDTO passwordUpdateDTO) {
+        PasswordUpdateResponseDTO response = new PasswordUpdateResponseDTO();
+        
+        try {
+            // Find user by ID
+            Optional<Utilisateur> userOpt = utilisateurRepository.findById(userId);
+            
+            if (userOpt.isEmpty()) {
+                response.setSuccess(false);
+                response.setMessage("Utilisateur non trouvé");
+                return response;
+            }
+            
+            Utilisateur user = userOpt.get();
+            
+            // Validate current password
+            if (!passwordEncoder.matches(passwordUpdateDTO.getCurrentPassword(), user.getPassword())) {
+                response.setSuccess(false);
+                response.setMessage("Mot de passe actuel incorrect");
+                return response;
+            }
+            
+            // Validate new password
+            if (passwordUpdateDTO.getNewPassword() == null || passwordUpdateDTO.getNewPassword().trim().isEmpty()) {
+                response.setSuccess(false);
+                response.setMessage("Le nouveau mot de passe est obligatoire");
+                return response;
+            }
+            
+            if (passwordUpdateDTO.getNewPassword().length() < 6) {
+                response.setSuccess(false);
+                response.setMessage("Le nouveau mot de passe doit contenir au moins 6 caractères");
+                return response;
+            }
+            
+            // Update password
+            user.setPassword(passwordEncoder.encode(passwordUpdateDTO.getNewPassword()));
+            utilisateurRepository.save(user);
+            
+            response.setSuccess(true);
+            response.setMessage("Mot de passe mis à jour avec succès");
+            
+        } catch (Exception e) {
+            response.setSuccess(false);
+            response.setMessage("Erreur lors de la mise à jour du mot de passe: " + e.getMessage());
+        }
+        
+        return response;
+    }
+} 

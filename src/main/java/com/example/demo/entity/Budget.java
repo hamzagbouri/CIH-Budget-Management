@@ -17,4 +17,5 @@ public class Budget {
     private List<BudgetDepartement> budgetDepartements;
 
     // getters & setters
+ 
 } 
