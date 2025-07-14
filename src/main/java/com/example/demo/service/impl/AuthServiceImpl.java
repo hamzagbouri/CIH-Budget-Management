@@ -2,6 +2,7 @@ package com.example.demo.service.impl;
 
 import com.example.demo.dto.LoginRequestDTO;
 import com.example.demo.dto.LoginResponseDTO;
+import com.example.demo.dto.LogoutResponseDTO;
 import com.example.demo.dto.PasswordUpdateDTO;
 import com.example.demo.dto.PasswordUpdateResponseDTO;
 import com.example.demo.dto.RegisterRequestDTO;
@@ -218,6 +219,48 @@ public class AuthServiceImpl implements AuthService {
         } catch (Exception e) {
             response.setSuccess(false);
             response.setMessage("Erreur lors de la mise à jour du mot de passe: " + e.getMessage());
+        }
+        
+        return response;
+    }
+    
+    @Override
+    public LogoutResponseDTO logout(String token) {
+        LogoutResponseDTO response = new LogoutResponseDTO();
+        
+        try {
+            if (token == null || token.trim().isEmpty()) {
+                response.setSuccess(false);
+                response.setMessage("Token manquant");
+                return response;
+            }
+            
+            // Remove "Bearer " prefix if present
+            if (token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+            
+            // Validate token format
+            if (!jwtUtil.validateToken(token)) {
+                response.setSuccess(false);
+                response.setMessage("Token invalide");
+                return response;
+            }
+            
+            // In a more advanced implementation, you could:
+            // 1. Add the token to a blacklist
+            // 2. Store it in Redis with an expiration time
+            // 3. Track logout events in the database
+            
+            // For now, we'll just validate the token and return success
+            // The client should remove the token from their storage
+            
+            response.setSuccess(true);
+            response.setMessage("Déconnexion réussie");
+            
+        } catch (Exception e) {
+            response.setSuccess(false);
+            response.setMessage("Erreur lors de la déconnexion: " + e.getMessage());
         }
         
         return response;

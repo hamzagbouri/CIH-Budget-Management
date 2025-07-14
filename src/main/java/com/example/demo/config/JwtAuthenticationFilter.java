@@ -26,6 +26,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         
         final String authorizationHeader = request.getHeader("Authorization");
+        logger.info("Processing request: " + request.getRequestURI() + " with Authorization: " + (authorizationHeader != null ? "present" : "missing"));
 
         String username = null;
         String jwt = null;
@@ -36,18 +37,28 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             try {
                 username = jwtUtil.extractUsername(jwt);
                 role = jwtUtil.extractClaim(jwt, claims -> claims.get("role", String.class));
+                logger.info("Extracted username: " + username + ", role: " + role);
             } catch (Exception e) {
                 logger.error("Error extracting JWT token: " + e.getMessage());
             }
         }
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            if (jwtUtil.validateToken(jwt, username)) {
-                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                    username, null, Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role))
-                );
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+            try {
+                if (jwtUtil.validateToken(jwt)) {
+                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                        username, null, Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role))
+                    );
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                    logger.info("Authentication set for user: " + username);
+                } else {
+                    logger.warn("Token validation failed for user: " + username);
+                }
+            } catch (Exception e) {
+                logger.error("Error validating token: " + e.getMessage());
             }
+        } else {
+            logger.info("No authentication set - username: " + username + ", existing auth: " + (SecurityContextHolder.getContext().getAuthentication() != null));
         }
         
         filterChain.doFilter(request, response);

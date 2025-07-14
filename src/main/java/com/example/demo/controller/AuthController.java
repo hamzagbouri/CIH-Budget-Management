@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.dto.LoginRequestDTO;
 import com.example.demo.dto.LoginResponseDTO;
+import com.example.demo.dto.LogoutResponseDTO;
 import com.example.demo.dto.PasswordUpdateDTO;
 import com.example.demo.dto.PasswordUpdateResponseDTO;
 import com.example.demo.dto.RegisterRequestDTO;
@@ -64,5 +65,17 @@ public class AuthController {
     @Operation(summary = "Test d'authentification", description = "Endpoint de test pour vérifier l'authentification")
     public ResponseEntity<String> testAuth() {
         return ResponseEntity.ok("Authentification réussie! Vous êtes connecté.");
+    }
+    
+    @PostMapping("/logout")
+    @Operation(summary = "Déconnexion utilisateur", description = "Déconnecte un utilisateur en invalidant son token")
+    public ResponseEntity<LogoutResponseDTO> logout(@RequestHeader("Authorization") String authorizationHeader) {
+        LogoutResponseDTO response = authService.logout(authorizationHeader);
+        
+        if (response.isSuccess()) {
+            return ResponseEntity.ok(response);
+        } else {
+            return ResponseEntity.badRequest().body(response);
+        }
     }
 } 

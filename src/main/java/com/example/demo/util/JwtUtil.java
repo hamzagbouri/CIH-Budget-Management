@@ -16,7 +16,7 @@ import java.util.function.Function;
 public class JwtUtil {
     
     private static final long JWT_TOKEN_VALIDITY = 5 * 60 * 60; // 5 hours
-    private final SecretKey secret = Keys.secretKeyFor(SignatureAlgorithm.HS512);
+    private final SecretKey secret = Keys.hmacShaKeyFor("your-secret-key-here-make-it-long-enough-for-hs256-algorithm-this-is-32-bytes-long".getBytes());
     
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
@@ -52,12 +52,21 @@ public class JwtUtil {
                 .setSubject(subject)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + JWT_TOKEN_VALIDITY * 1000))
-                .signWith(secret)
+                .signWith(secret, SignatureAlgorithm.HS256)
                 .compact();
     }
     
     public Boolean validateToken(String token, String username) {
         final String extractedUsername = extractUsername(token);
         return (extractedUsername.equals(username) && !isTokenExpired(token));
+    }
+    
+    public Boolean validateToken(String token) {
+        return !isTokenExpired(token);
+    }
+    
+    public Integer getUserIdFromToken(String token) {
+        final Claims claims = extractAllClaims(token);
+        return claims.get("userId", Integer.class);
     }
 } 
