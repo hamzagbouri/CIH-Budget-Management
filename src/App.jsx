@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
 import Depenses from './pages/Depenses';
@@ -10,8 +10,10 @@ import AdminDepartements from './pages/AdminDepartements';
 import AdminResponsables from './pages/AdminResponsables';
 import AdminValidationDepenses from './pages/AdminValidationDepenses';
 import AdminStats from './pages/AdminStats';
+import AdminBudgets from './pages/AdminBudgets';
 import { AuthProvider } from './context/AuthContext';
 import { RoleProvider } from './context/RoleContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
 
 function App() {
@@ -20,17 +22,73 @@ function App() {
       <BrowserRouter>
         <RoleProvider>
           <Routes>
-            <Route path="/" element={<Auth />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/depenses" element={<Depenses />} />
-            <Route path="/historique" element={<Historique />} />
-            <Route path="/rapports" element={<Rapports />} />
-            <Route path="/budgets" element={<Budgets />} />
-            <Route path="/utilisateurs" element={<Utilisateurs />} />
-            <Route path="/admin/departements" element={<AdminDepartements />} />
-            <Route path="/admin/responsables" element={<AdminResponsables />} />
-            <Route path="/admin/validation-depenses" element={<AdminValidationDepenses />} />
-            <Route path="/admin/stats" element={<AdminStats />} />
+            {/* Public routes */}
+            <Route path="/auth" element={<Auth />} />
+            
+            {/* Redirect root to appropriate dashboard */}
+            <Route path="/" element={<Navigate to="/auth" replace />} />
+            
+            {/* User routes */}
+            <Route path="/dashboard" element={
+              <ProtectedRoute allowedRoles={['USER', 'MANAGER']}>
+                <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/depenses" element={
+              <ProtectedRoute allowedRoles={['USER', 'MANAGER']}>
+                <Depenses />
+              </ProtectedRoute>
+            } />
+            <Route path="/historique" element={
+              <ProtectedRoute allowedRoles={['USER', 'MANAGER']}>
+                <Historique />
+              </ProtectedRoute>
+            } />
+            <Route path="/rapports" element={
+              <ProtectedRoute allowedRoles={['USER', 'MANAGER']}>
+                <Rapports />
+              </ProtectedRoute>
+            } />
+            
+            {/* Admin routes */}
+            <Route path="/budgets" element={
+              <ProtectedRoute allowedRoles={['ADMIN']}>
+                <Budgets />
+              </ProtectedRoute>
+            } />
+            <Route path="/utilisateurs" element={
+              <ProtectedRoute allowedRoles={['ADMIN']}>
+                <Utilisateurs />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/departements" element={
+              <ProtectedRoute allowedRoles={['ADMIN']}>
+                <AdminDepartements />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/responsables" element={
+              <ProtectedRoute allowedRoles={['ADMIN']}>
+                <AdminResponsables />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/validation-depenses" element={
+              <ProtectedRoute allowedRoles={['ADMIN']}>
+                <AdminValidationDepenses />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/stats" element={
+              <ProtectedRoute allowedRoles={['ADMIN']}>
+                <AdminStats />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/budgets" element={
+              <ProtectedRoute allowedRoles={['ADMIN']}>
+                <AdminBudgets />
+              </ProtectedRoute>
+            } />
+            
+            {/* Catch all route */}
+            <Route path="*" element={<Navigate to="/auth" replace />} />
           </Routes>
         </RoleProvider>
       </BrowserRouter>

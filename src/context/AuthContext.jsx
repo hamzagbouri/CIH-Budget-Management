@@ -22,7 +22,7 @@ export function AuthProvider({ children }) {
       const response = await authService.login(email, password);
       if (response.success) {
         setUser(response.user);
-        return { success: true, message: response.message };
+        return { success: true, message: response.message, user: response.user };
       } else {
         return { success: false, message: response.message || 'Erreur de connexion' };
       }

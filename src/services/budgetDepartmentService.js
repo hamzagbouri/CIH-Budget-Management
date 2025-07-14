@@ -21,6 +21,36 @@ export const budgetDepartmentService = {
     }
   },
 
+  // Get budget departments by year
+  async getBudgetDepartmentsByYear(year) {
+    try {
+      const response = await apiClient.get(`/api/budget-departements/year/${year}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Erreur lors de la récupération des budgets par année' };
+    }
+  },
+
+  // Get budget departments by department
+  async getBudgetDepartmentsByDepartment(departmentId) {
+    try {
+      const response = await apiClient.get(`/api/budget-departements/departement/${departmentId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Erreur lors de la récupération des budgets du département' };
+    }
+  },
+
+  // Get budget department by department and year
+  async getBudgetDepartmentByDepartmentAndYear(departmentId, year) {
+    try {
+      const response = await apiClient.get(`/api/budget-departements/departement/${departmentId}/year/${year}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Erreur lors de la récupération du budget département' };
+    }
+  },
+
   // Create new budget department
   async createBudgetDepartment(budgetDepartmentData) {
     try {

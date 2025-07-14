@@ -19,7 +19,12 @@ export default function Auth() {
     try {
       const result = await login(email, password);
       if (result.success) {
-        navigate('/dashboard');
+        // Redirect based on user role
+        if (result.user.role === 'ADMIN') {
+          navigate('/admin/stats');
+        } else {
+          navigate('/dashboard');
+        }
       } else {
         setError(result.message);
       }

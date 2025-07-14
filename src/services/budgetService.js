@@ -21,6 +21,26 @@ export const budgetService = {
     }
   },
 
+  // Get budget by year
+  async getBudgetByYear(year) {
+    try {
+      const response = await apiClient.get(`/api/budgets/year/${year}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Erreur lors de la récupération du budget par année' };
+    }
+  },
+
+  // Get budget summary by year
+  async getBudgetSummaryByYear(year) {
+    try {
+      const response = await apiClient.get(`/api/budgets/year/${year}/summary`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Erreur lors de la récupération du résumé du budget' };
+    }
+  },
+
   // Create new budget
   async createBudget(budgetData) {
     try {

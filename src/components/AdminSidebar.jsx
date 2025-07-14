@@ -5,6 +5,7 @@ import cihLogo from '../assets/Cih.png';
 const links = [
   { to: '/admin/departements', label: 'Départements', icon: 'apartment' },
   { to: '/admin/responsables', label: 'Responsables', icon: 'supervisor_account' },
+  { to: '/admin/budgets', label: 'Gestion Budgets', icon: 'account_balance_wallet' },
   { to: '/admin/validation-depenses', label: 'Validation Dépenses', icon: 'fact_check' },
   { to: '/admin/stats', label: 'Statistiques', icon: 'insights' },
 ];

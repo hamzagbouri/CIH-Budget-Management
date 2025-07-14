@@ -1,30 +1,37 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { expenseService, departmentService } from '../services';
-import UserSidebar from '../components/UserSidebar';
+import Sidebar from '../components/Sidebar';
 import Modal from '../components/Modal';
 import FormInput from '../components/FormInput';
 import SelectInput from '../components/SelectInput';
+import Table from '../components/Table';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title } from 'chart.js';
+import { Pie, Bar } from 'react-chartjs-2';
 
-const expenseTypes = [
-  { value: 'OPERATIONNEL', label: 'Opérationnel' },
-  { value: 'INVESTISSEMENT', label: 'Investissement' },
-  { value: 'FORMATION', label: 'Formation' },
-  { value: 'MAINTENANCE', label: 'Maintenance' },
-  { value: 'AUTRE', label: 'Autre' }
-];
+ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title);
 
 export default function Depenses() {
   const { user } = useAuth();
-  const [expenses, setExpenses] = useState([]);
-  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-  const [editId, setEditId] = useState(null);
+  const [expenses, setExpenses] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedExpense, setSelectedExpense] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({
+  const [filters, setFilters] = useState({
+    type: '',
+    departementId: '',
+    dateFrom: '',
+    dateTo: ''
+  });
+
+  // Form state
+  const [expenseForm, setExpenseForm] = useState({
     titre: '',
     description: '',
     type: '',
@@ -32,120 +39,26 @@ export default function Depenses() {
     montant: '',
     departementId: ''
   });
+
   const [errors, setErrors] = useState({});
 
-  // Fetch expenses and departments on component mount
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [expensesData, departmentsData] = await Promise.all([
-          expenseService.getAllExpenses(),
-          departmentService.getAllDepartments()
-        ]);
-        setExpenses(expensesData);
-        setDepartments(departmentsData);
-      } catch (err) {
-        setError(err.message || 'Erreur lors du chargement des données');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
   }, []);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
-  };
-
-  const validate = () => {
-    const errs = {};
-    if (!form.titre?.trim()) errs.titre = 'Le titre est requis';
-    if (!form.description?.trim()) errs.description = 'La description est requise';
-    if (!form.type) errs.type = 'Le type est requis';
-    if (!form.date) errs.date = 'La date est requise';
-    if (!form.montant || isNaN(form.montant) || Number(form.montant) <= 0) {
-      errs.montant = 'Le montant doit être un nombre positif';
-    }
-    if (!form.departementId) errs.departementId = 'Le département est requis';
-    
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
-
-  const resetForm = () => {
-    setForm({
-      titre: '',
-      description: '',
-      type: '',
-      date: '',
-      montant: '',
-      departementId: user?.departementId?.toString() || ''
-    });
-    setErrors({});
-    setEditId(null);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validate()) return;
-
+  const fetchData = async () => {
     try {
-      setSubmitting(true);
-      const expenseData = {
-        ...form,
-        montant: Number(form.montant),
-        departementId: Number(form.departementId)
-      };
-
-      if (editId) {
-        // Update existing expense
-        const updatedExpense = await expenseService.updateExpense(editId, expenseData);
-        setExpenses(prev => prev.map(exp => exp.id === editId ? updatedExpense : exp));
-      } else {
-        // Create new expense
-        const newExpense = await expenseService.createExpense(expenseData);
-        setExpenses(prev => [newExpense, ...prev]);
-      }
-
-      setShowModal(false);
-      resetForm();
+      setLoading(true);
+      const [expensesData, departmentsData] = await Promise.all([
+        expenseService.getAllExpenses(),
+        departmentService.getAllDepartments()
+      ]);
+      setExpenses(expensesData);
+      setDepartments(departmentsData);
     } catch (err) {
-      setError(err.message || 'Erreur lors de la sauvegarde');
+      setError(err.message || 'Erreur lors du chargement des données');
     } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleEdit = (expense) => {
-    setForm({
-      titre: expense.titre,
-      description: expense.description,
-      type: expense.type,
-      date: expense.date,
-      montant: expense.montant.toString(),
-      departementId: expense.departementId.toString()
-    });
-    setEditId(expense.id);
-    setShowModal(true);
-  };
-
-  const handleDelete = async (expense) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette dépense ?')) {
-      return;
-    }
-
-    try {
-      await expenseService.deleteExpense(expense.id);
-      setExpenses(prev => prev.filter(exp => exp.id !== expense.id));
-    } catch (err) {
-      setError(err.message || 'Erreur lors de la suppression');
+      setLoading(false);
     }
   };
 
@@ -155,11 +68,11 @@ export default function Depenses() {
       currency: 'MAD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(amount);
+    }).format(amount || 0);
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('fr-MA', {
+    return new Date(dateString).toLocaleDateString('fr-FR', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric'
@@ -167,29 +80,258 @@ export default function Depenses() {
   };
 
   const getExpenseTypeColor = (type) => {
-    switch (type) {
-      case 'OPERATIONNEL': return 'bg-blue-100 text-blue-800';
-      case 'INVESTISSEMENT': return 'bg-purple-100 text-purple-800';
-      case 'FORMATION': return 'bg-green-100 text-green-800';
-      case 'MAINTENANCE': return 'bg-orange-100 text-orange-800';
-      default: return 'bg-gray-100 text-gray-800';
+    const colors = {
+      'EQUIPEMENT': 'bg-blue-100 text-blue-800',
+      'FORMATION': 'bg-green-100 text-green-800',
+      'MAINTENANCE': 'bg-orange-100 text-orange-800',
+      'LOGISTIQUE': 'bg-purple-100 text-purple-800',
+      'AUTRE': 'bg-gray-100 text-gray-800'
+    };
+    return colors[type] || colors['AUTRE'];
+  };
+
+  const getDepartmentName = (departmentId) => {
+    const department = departments.find(d => d.id === departmentId);
+    return department ? department.nom : 'Inconnu';
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    try {
+      setSubmitting(true);
+      const expenseData = {
+        titre: expenseForm.titre,
+        description: expenseForm.description,
+        type: expenseForm.type,
+        date: expenseForm.date,
+        montant: Number(expenseForm.montant),
+        departementId: Number(expenseForm.departementId)
+      };
+
+      if (selectedExpense) {
+        // Update existing expense
+        const updatedExpense = await expenseService.updateExpense(selectedExpense.id, expenseData);
+        setExpenses(prev => prev.map(exp => exp.id === selectedExpense.id ? updatedExpense : exp));
+        setShowEditModal(false);
+      } else {
+        // Create new expense
+        const newExpense = await expenseService.createExpense(expenseData);
+        setExpenses(prev => [newExpense, ...prev]);
+        setShowAddModal(false);
+      }
+
+      resetForm();
+    } catch (err) {
+      setError(err.message || 'Erreur lors de la sauvegarde de la dépense');
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const getExpenseTypeIcon = (type) => {
-    switch (type) {
-      case 'OPERATIONNEL': return 'build';
-      case 'INVESTISSEMENT': return 'trending_up';
-      case 'FORMATION': return 'school';
-      case 'MAINTENANCE': return 'handyman';
-      default: return 'receipt';
+  const handleDelete = async () => {
+    if (!selectedExpense) return;
+
+    try {
+      await expenseService.deleteExpense(selectedExpense.id);
+      setExpenses(prev => prev.filter(exp => exp.id !== selectedExpense.id));
+      setShowDeleteModal(false);
+      setSelectedExpense(null);
+    } catch (err) {
+      setError(err.message || 'Erreur lors de la suppression');
     }
   };
+
+  const validateForm = () => {
+    const errs = {};
+    if (!expenseForm.titre.trim()) {
+      errs.titre = 'Titre requis';
+    }
+    if (!expenseForm.description.trim()) {
+      errs.description = 'Description requise';
+    }
+    if (!expenseForm.type) {
+      errs.type = 'Type requis';
+    }
+    if (!expenseForm.date) {
+      errs.date = 'Date requise';
+    }
+    if (!expenseForm.montant || Number(expenseForm.montant) <= 0) {
+      errs.montant = 'Montant invalide';
+    }
+    if (!expenseForm.departementId) {
+      errs.departementId = 'Département requis';
+    }
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setExpenseForm(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const resetForm = () => {
+    setExpenseForm({
+      titre: '',
+      description: '',
+      type: '',
+      date: '',
+      montant: '',
+      departementId: ''
+    });
+    setErrors({});
+    setSelectedExpense(null);
+  };
+
+  const openEditModal = (expense) => {
+    setSelectedExpense(expense);
+    setExpenseForm({
+      titre: expense.titre,
+      description: expense.description,
+      type: expense.type,
+      date: expense.date,
+      montant: expense.montant.toString(),
+      departementId: expense.departementId.toString()
+    });
+    setShowEditModal(true);
+  };
+
+  const openDeleteModal = (expense) => {
+    setSelectedExpense(expense);
+    setShowDeleteModal(true);
+  };
+
+  const openAddModal = () => {
+    resetForm();
+    setExpenseForm(prev => ({
+      ...prev,
+      departementId: user?.departementId?.toString() || '',
+      date: new Date().toISOString().split('T')[0]
+    }));
+    setShowAddModal(true);
+  };
+
+  // Filter expenses
+  const filteredExpenses = expenses.filter(expense => {
+    if (filters.type && expense.type !== filters.type) return false;
+    if (filters.departementId && expense.departementId !== Number(filters.departementId)) return false;
+    if (filters.dateFrom && expense.date < filters.dateFrom) return false;
+    if (filters.dateTo && expense.date > filters.dateTo) return false;
+    return true;
+  });
+
+  // Chart data
+  const getChartData = () => {
+    const typeData = {};
+    const monthlyData = {};
+
+    filteredExpenses.forEach(expense => {
+      // Type distribution
+      typeData[expense.type] = (typeData[expense.type] || 0) + expense.montant;
+
+      // Monthly distribution
+      const month = new Date(expense.date).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+      monthlyData[month] = (monthlyData[month] || 0) + expense.montant;
+    });
+
+    return {
+      typeData: {
+        labels: Object.keys(typeData),
+        datasets: [{
+          data: Object.values(typeData),
+          backgroundColor: [
+            '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#6B7280'
+          ],
+          borderWidth: 2,
+          borderColor: '#fff'
+        }]
+      },
+      monthlyData: {
+        labels: Object.keys(monthlyData),
+        datasets: [{
+          label: 'Dépenses (MAD)',
+          data: Object.values(monthlyData),
+          backgroundColor: '#3B82F6',
+          borderColor: '#2563EB',
+          borderWidth: 1
+        }]
+      }
+    };
+  };
+
+  const chartData = getChartData();
+
+  // Table columns
+  const columns = [
+    {
+      key: 'titre',
+      label: 'Titre',
+      render: (value, row) => (
+        <div>
+          <div className="font-medium text-gray-900">{value}</div>
+          <div className="text-sm text-gray-500">{row.description}</div>
+        </div>
+      )
+    },
+    {
+      key: 'type',
+      label: 'Type',
+      render: (value) => (
+        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getExpenseTypeColor(value)}`}>
+          {value}
+        </span>
+      )
+    },
+    {
+      key: 'montant',
+      label: 'Montant',
+      render: (value) => (
+        <span className="font-semibold text-gray-900">{formatCurrency(value)}</span>
+      )
+    },
+    {
+      key: 'date',
+      label: 'Date',
+      render: (value) => formatDate(value)
+    },
+    {
+      key: 'departementId',
+      label: 'Département',
+      render: (value) => getDepartmentName(value)
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (value, row) => (
+        <div className="flex space-x-2">
+          <button
+            onClick={() => openEditModal(row)}
+            className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+            title="Modifier"
+          >
+            <span className="material-icons text-sm">edit</span>
+          </button>
+          <button
+            onClick={() => openDeleteModal(row)}
+            className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+            title="Supprimer"
+          >
+            <span className="material-icons text-sm">delete</span>
+          </button>
+        </div>
+      )
+    }
+  ];
 
   if (loading) {
     return (
       <div className="flex flex-col md:flex-row min-h-screen bg-[#e9eff2]">
-        <UserSidebar />
+        <Sidebar />
         <main className="flex-1 p-10">
           <LoadingSpinner size="lg" text="Chargement des dépenses..." />
         </main>
@@ -199,28 +341,16 @@ export default function Depenses() {
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-[#e9eff2]">
-      <UserSidebar />
+      <Sidebar />
       <main className="flex-1 p-6 md:p-10">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">
-              Gestion des Dépenses
-            </h1>
-            <p className="text-gray-600">
-              {expenses.length} dépense{expenses.length !== 1 ? 's' : ''} au total
-            </p>
-          </div>
-          <button
-            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold text-lg transition-all duration-200 shadow-lg hover:shadow-xl"
-            onClick={() => {
-              resetForm();
-              setShowModal(true);
-            }}
-          >
-            <span className="material-icons text-xl">add</span>
-            <span className="hidden sm:inline">Nouvelle Dépense</span>
-          </button>
+        <div className="mb-8">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">
+            Gestion des Dépenses
+          </h1>
+          <p className="text-gray-600">
+            Suivi et gestion des dépenses du département
+          </p>
         </div>
 
         {/* Error Display */}
@@ -233,170 +363,264 @@ export default function Depenses() {
           </div>
         )}
 
-        {/* Expenses List */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          {expenses.length > 0 ? (
-            <div className="divide-y divide-gray-100">
-              {expenses.map((expense) => (
-                <div key={expense.id} className="p-6 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4 flex-1">
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${getExpenseTypeColor(expense.type)}`}>
-                        <span className="material-icons text-lg">
-                          {getExpenseTypeIcon(expense.type)}
-                        </span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-gray-900 text-lg mb-1">
-                          {expense.titre}
-                        </h3>
-                        <p className="text-gray-600 text-sm mb-2 line-clamp-2">
-                          {expense.description}
-                        </p>
-                        <div className="flex items-center space-x-4 text-xs text-gray-500">
-                          <span className="flex items-center">
-                            <span className="material-icons text-sm mr-1">calendar_today</span>
-                            {formatDate(expense.date)}
-                          </span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getExpenseTypeColor(expense.type)}`}>
-                            {expense.type}
-                          </span>
-                          <span className="flex items-center">
-                            <span className="material-icons text-sm mr-1">apartment</span>
-                            {departments.find(d => d.id === expense.departementId)?.nom || 'Département inconnu'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-3 ml-4">
-                      <div className="text-right">
-                        <p className="font-bold text-gray-900 text-lg">
-                          {formatCurrency(expense.montant)}
-                        </p>
-                      </div>
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleEdit(expense)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="Modifier"
-                        >
-                          <span className="material-icons">edit</span>
-                        </button>
-                        <button
-                          onClick={() => handleDelete(expense)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Supprimer"
-                        >
-                          <span className="material-icons">delete</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <div className="flex items-center">
+              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                <span className="material-icons text-blue-600">receipt</span>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-500">Total Dépenses</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {formatCurrency(filteredExpenses.reduce((sum, exp) => sum + exp.montant, 0))}
+                </p>
+              </div>
             </div>
-          ) : (
-            <div className="p-12 text-center">
-              <span className="material-icons text-6xl text-gray-300 mb-4">receipt_long</span>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Aucune dépense</h3>
-              <p className="text-gray-500 mb-6">Commencez par ajouter votre première dépense</p>
-              <button
-                onClick={() => {
-                  resetForm();
-                  setShowModal(true);
-                }}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <span className="material-icons">add</span>
-                Ajouter une dépense
-              </button>
+          </div>
+
+          <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <div className="flex items-center">
+              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                <span className="material-icons text-green-600">list</span>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-500">Nombre</p>
+                <p className="text-2xl font-bold text-gray-900">{filteredExpenses.length}</p>
+              </div>
             </div>
-          )}
+          </div>
+
+          <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <div className="flex items-center">
+              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+                <span className="material-icons text-orange-600">trending_up</span>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-500">Moyenne</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {filteredExpenses.length > 0 
+                    ? formatCurrency(filteredExpenses.reduce((sum, exp) => sum + exp.montant, 0) / filteredExpenses.length)
+                    : formatCurrency(0)
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <div className="flex items-center">
+              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                <span className="material-icons text-purple-600">calendar_today</span>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-500">Ce Mois</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {formatCurrency(
+                    filteredExpenses
+                      .filter(exp => {
+                        const expDate = new Date(exp.date);
+                        const now = new Date();
+                        return expDate.getMonth() === now.getMonth() && expDate.getFullYear() === now.getFullYear();
+                      })
+                      .reduce((sum, exp) => sum + exp.montant, 0)
+                  )}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Add/Edit Modal */}
-        <Modal 
-          open={showModal} 
-          onClose={() => {
-            setShowModal(false);
-            resetForm();
-          }} 
-          title={editId ? 'Modifier la dépense' : 'Nouvelle dépense'}
-        >
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <FormInput
-              label="Titre de la dépense"
-              name="titre"
-              value={form.titre}
-              onChange={handleChange}
-              required
-              error={errors.titre}
-              placeholder="Ex: Achat fournitures de bureau"
-            />
-            
-            <FormInput
-              label="Description"
-              name="description"
-              value={form.description}
-              onChange={handleChange}
-              required
-              error={errors.description}
-              placeholder="Description détaillée de la dépense"
-              multiline
-            />
+        {/* Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Répartition par Type</h3>
+            <div className="h-64">
+              <Pie data={chartData.typeData} options={{ maintainAspectRatio: false }} />
+            </div>
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <SelectInput
-                label="Type de dépense"
-                name="type"
-                value={form.type}
-                onChange={handleChange}
-                options={expenseTypes}
-                required
-                error={errors.type}
-              />
-
-              <FormInput
-                label="Montant (MAD)"
-                name="montant"
-                type="number"
-                value={form.montant}
-                onChange={handleChange}
-                required
-                error={errors.montant}
-                placeholder="0"
-                min="0"
-                step="0.01"
+          <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Évolution Mensuelle</h3>
+            <div className="h-64">
+              <Bar 
+                data={chartData.monthlyData} 
+                options={{ 
+                  maintainAspectRatio: false,
+                  scales: {
+                    y: {
+                      beginAtZero: true
+                    }
+                  }
+                }} 
               />
             </div>
+          </div>
+        </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormInput
-                label="Date"
-                name="date"
-                type="date"
-                value={form.date}
-                onChange={handleChange}
-                required
-                error={errors.date}
+        {/* Filters and Actions */}
+        <div className="bg-white rounded-2xl p-6 mb-8 shadow-sm">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="flex flex-wrap gap-4">
+              <SelectInput
+                label="Type"
+                name="type"
+                value={filters.type}
+                onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
+                options={[
+                  { value: '', label: 'Tous les types' },
+                  { value: 'EQUIPEMENT', label: 'Équipement' },
+                  { value: 'FORMATION', label: 'Formation' },
+                  { value: 'MAINTENANCE', label: 'Maintenance' },
+                  { value: 'LOGISTIQUE', label: 'Logistique' },
+                  { value: 'AUTRE', label: 'Autre' }
+                ]}
               />
-
+              
               <SelectInput
                 label="Département"
                 name="departementId"
-                value={form.departementId}
-                onChange={handleChange}
-                options={departments.map(d => ({ value: d.id, label: d.nom }))}
-                required
-                error={errors.departementId}
+                value={filters.departementId}
+                onChange={(e) => setFilters(prev => ({ ...prev, departementId: e.target.value }))}
+                options={[
+                  { value: '', label: 'Tous les départements' },
+                  ...departments.map(d => ({ value: d.id, label: d.nom }))
+                ]}
+              />
+
+              <FormInput
+                label="Date de début"
+                name="dateFrom"
+                type="date"
+                value={filters.dateFrom}
+                onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+              />
+
+              <FormInput
+                label="Date de fin"
+                name="dateTo"
+                type="date"
+                value={filters.dateTo}
+                onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
               />
             </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setFilters({ type: '', departementId: '', dateFrom: '', dateTo: '' })}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                Réinitialiser
+              </button>
+              <button
+                onClick={openAddModal}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <span className="material-icons">add</span>
+                Nouvelle Dépense
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Expenses Table */}
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <Table
+            data={filteredExpenses}
+            columns={columns}
+            itemsPerPage={10}
+            searchable
+            sortable
+          />
+        </div>
+
+        {/* Add Expense Modal */}
+        <Modal
+          open={showAddModal}
+          onClose={() => {
+            setShowAddModal(false);
+            resetForm();
+          }}
+          title="Nouvelle Dépense"
+        >
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <FormInput
+              label="Titre"
+              name="titre"
+              value={expenseForm.titre}
+              onChange={handleChange}
+              required
+              error={errors.titre}
+            />
+
+            <FormInput
+              label="Description"
+              name="description"
+              value={expenseForm.description}
+              onChange={handleChange}
+              required
+              error={errors.description}
+              multiline
+            />
+
+            <SelectInput
+              label="Type"
+              name="type"
+              value={expenseForm.type}
+              onChange={handleChange}
+              options={[
+                { value: '', label: 'Sélectionner un type' },
+                { value: 'EQUIPEMENT', label: 'Équipement' },
+                { value: 'FORMATION', label: 'Formation' },
+                { value: 'MAINTENANCE', label: 'Maintenance' },
+                { value: 'LOGISTIQUE', label: 'Logistique' },
+                { value: 'AUTRE', label: 'Autre' }
+              ]}
+              required
+              error={errors.type}
+            />
+
+            <FormInput
+              label="Date"
+              name="date"
+              type="date"
+              value={expenseForm.date}
+              onChange={handleChange}
+              required
+              error={errors.date}
+            />
+
+            <FormInput
+              label="Montant (MAD)"
+              name="montant"
+              type="number"
+              value={expenseForm.montant}
+              onChange={handleChange}
+              required
+              error={errors.montant}
+              placeholder="0"
+              min="0"
+              step="100"
+            />
+
+            <SelectInput
+              label="Département"
+              name="departementId"
+              value={expenseForm.departementId}
+              onChange={handleChange}
+              options={[
+                { value: '', label: 'Sélectionner un département' },
+                ...departments.map(d => ({ value: d.id, label: d.nom }))
+              ]}
+              required
+              error={errors.departementId}
+            />
 
             <div className="flex justify-end space-x-3 pt-4">
               <button
                 type="button"
                 onClick={() => {
-                  setShowModal(false);
+                  setShowAddModal(false);
                   resetForm();
                 }}
                 className="px-6 py-2 text-gray-600 hover:text-gray-800 transition-colors"
@@ -411,14 +635,161 @@ export default function Depenses() {
                 {submitting ? (
                   <span className="flex items-center gap-2">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    {editId ? 'Modification...' : 'Création...'}
+                    Création...
                   </span>
                 ) : (
-                  editId ? 'Modifier' : 'Créer'
+                  'Créer la Dépense'
                 )}
               </button>
             </div>
           </form>
+        </Modal>
+
+        {/* Edit Expense Modal */}
+        <Modal
+          open={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            resetForm();
+          }}
+          title="Modifier la Dépense"
+        >
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <FormInput
+              label="Titre"
+              name="titre"
+              value={expenseForm.titre}
+              onChange={handleChange}
+              required
+              error={errors.titre}
+            />
+
+            <FormInput
+              label="Description"
+              name="description"
+              value={expenseForm.description}
+              onChange={handleChange}
+              required
+              error={errors.description}
+              multiline
+            />
+
+            <SelectInput
+              label="Type"
+              name="type"
+              value={expenseForm.type}
+              onChange={handleChange}
+              options={[
+                { value: '', label: 'Sélectionner un type' },
+                { value: 'EQUIPEMENT', label: 'Équipement' },
+                { value: 'FORMATION', label: 'Formation' },
+                { value: 'MAINTENANCE', label: 'Maintenance' },
+                { value: 'LOGISTIQUE', label: 'Logistique' },
+                { value: 'AUTRE', label: 'Autre' }
+              ]}
+              required
+              error={errors.type}
+            />
+
+            <FormInput
+              label="Date"
+              name="date"
+              type="date"
+              value={expenseForm.date}
+              onChange={handleChange}
+              required
+              error={errors.date}
+            />
+
+            <FormInput
+              label="Montant (MAD)"
+              name="montant"
+              type="number"
+              value={expenseForm.montant}
+              onChange={handleChange}
+              required
+              error={errors.montant}
+              placeholder="0"
+              min="0"
+              step="100"
+            />
+
+            <SelectInput
+              label="Département"
+              name="departementId"
+              value={expenseForm.departementId}
+              onChange={handleChange}
+              options={[
+                { value: '', label: 'Sélectionner un département' },
+                ...departments.map(d => ({ value: d.id, label: d.nom }))
+              ]}
+              required
+              error={errors.departementId}
+            />
+
+            <div className="flex justify-end space-x-3 pt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEditModal(false);
+                  resetForm();
+                }}
+                className="px-6 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {submitting ? (
+                  <span className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Mise à Jour...
+                  </span>
+                ) : (
+                  'Mettre à Jour'
+                )}
+              </button>
+            </div>
+          </form>
+        </Modal>
+
+        {/* Delete Confirmation Modal */}
+        <Modal
+          open={showDeleteModal}
+          onClose={() => {
+            setShowDeleteModal(false);
+            setSelectedExpense(null);
+          }}
+          title="Confirmer la Suppression"
+        >
+          <div className="space-y-4">
+            <p className="text-gray-700">
+              Êtes-vous sûr de vouloir supprimer la dépense "{selectedExpense?.titre}" ?
+            </p>
+            <p className="text-sm text-gray-500">
+              Cette action est irréversible.
+            </p>
+            <div className="flex justify-end space-x-3 pt-4">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setSelectedExpense(null);
+                }}
+                className="px-6 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleDelete}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Supprimer
+              </button>
+            </div>
+          </div>
         </Modal>
       </main>
     </div>
