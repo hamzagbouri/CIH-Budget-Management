@@ -9,4 +9,6 @@ public interface BudgetService {
     BudgetDTO save(BudgetDTO budgetDTO);
     BudgetDTO update(Integer id, BudgetDTO budgetDTO);
     void delete(Integer id);
+    BudgetDTO findByAnnee(Integer annee);
+    Object getBudgetSummary(Integer annee);
 } 

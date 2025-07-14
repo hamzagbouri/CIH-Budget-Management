@@ -1,0 +1,656 @@
+{
+  "apiBaseUrl": "http://localhost:8080",
+  "authentication": {
+    "login": {
+      "url": "/api/auth/login",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "email": "string",
+        "password": "string"
+      },
+      "response": {
+        "success": "boolean",
+        "token": "string",
+        "user": {
+          "id": "number",
+          "nom": "string",
+          "email": "string",
+          "role": "string",
+          "matricule": "string",
+          "departementId": "number"
+        },
+        "message": "string"
+      }
+    },
+    "register": {
+      "url": "/api/auth/register",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "nom": "string",
+        "email": "string",
+        "password": "string",
+        "role": "string",
+        "matricule": "string",
+        "departementId": "number"
+      },
+      "response": {
+        "success": "boolean",
+        "user": {
+          "id": "number",
+          "nom": "string",
+          "email": "string",
+          "role": "string",
+          "matricule": "string",
+          "departementId": "number"
+        },
+        "message": "string"
+      }
+    },
+    "logout": {
+      "url": "/api/auth/logout",
+      "method": "POST",
+      "headers": {
+        "Authorization": "Bearer {token}"
+      },
+      "response": {
+        "success": "boolean",
+        "message": "string"
+      }
+    },
+    "updatePassword": {
+      "url": "/api/auth/password/{userId}",
+      "method": "PUT",
+      "headers": {
+        "Authorization": "Bearer {token}",
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "currentPassword": "string",
+        "newPassword": "string"
+      },
+      "response": {
+        "success": "boolean",
+        "message": "string"
+      }
+    }
+  },
+  "dashboard": {
+    "departementDashboard": {
+      "url": "/api/dashboard/departement",
+      "method": "GET",
+      "headers": {
+        "Authorization": "Bearer {token}"
+      },
+      "response": {
+        "departementId": "number",
+        "departementNom": "string",
+        "budget": {
+          "id": "number",
+          "annee": "number",
+          "montant": "number"
+        },
+        "recentDepenses": [
+          {
+            "id": "number",
+            "titre": "string",
+            "description": "string",
+            "type": "string",
+            "date": "string (YYYY-MM-DD)",
+            "montant": "number",
+            "departementId": "number"
+          }
+        ],
+        "totalDepenses": "number",
+        "budgetRestant": "number"
+      }
+    }
+  },
+  "budgets": {
+    "annualBudgets": {
+      "getAll": {
+        "url": "/api/budgets",
+        "method": "GET",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": [
+          {
+            "id": "number",
+            "annee": "number",
+            "montant": "number"
+          }
+        ]
+      },
+      "getById": {
+        "url": "/api/budgets/{id}",
+        "method": "GET",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": {
+          "id": "number",
+          "annee": "number",
+          "montant": "number"
+        }
+      },
+      "getByYear": {
+        "url": "/api/budgets/year/{annee}",
+        "method": "GET",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": {
+          "id": "number",
+          "annee": "number",
+          "montant": "number"
+        }
+      },
+      "getBudgetSummary": {
+        "url": "/api/budgets/year/{annee}/summary",
+        "method": "GET",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": {
+          "annee": "number",
+          "budgetTotal": "number",
+          "budgetAlloue": "number",
+          "budgetRestant": "number",
+          "pourcentageUtilise": "number"
+        }
+      },
+      "create": {
+        "url": "/api/budgets",
+        "method": "POST",
+        "headers": {
+          "Authorization": "Bearer {token}",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "annee": "number",
+          "montant": "number"
+        },
+        "response": {
+          "id": "number",
+          "annee": "number",
+          "montant": "number"
+        }
+      },
+      "update": {
+        "url": "/api/budgets/{id}",
+        "method": "PUT",
+        "headers": {
+          "Authorization": "Bearer {token}",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "annee": "number",
+          "montant": "number"
+        },
+        "response": {
+          "id": "number",
+          "annee": "number",
+          "montant": "number"
+        }
+      },
+      "delete": {
+        "url": "/api/budgets/{id}",
+        "method": "DELETE",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        }
+      }
+    },
+    "departmentBudgets": {
+      "getAll": {
+        "url": "/api/budget-departements",
+        "method": "GET",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": [
+          {
+            "id": "number",
+            "annee": "number",
+            "montant": "number",
+            "departementId": "number",
+            "budgetId": "number"
+          }
+        ]
+      },
+      "getById": {
+        "url": "/api/budget-departements/{id}",
+        "method": "GET",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": {
+          "id": "number",
+          "annee": "number",
+          "montant": "number",
+          "departementId": "number",
+          "budgetId": "number"
+        }
+      },
+      "getByYear": {
+        "url": "/api/budget-departements/year/{annee}",
+        "method": "GET",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": [
+          {
+            "id": "number",
+            "annee": "number",
+            "montant": "number",
+            "departementId": "number",
+            "budgetId": "number"
+          }
+        ]
+      },
+      "getByDepartement": {
+        "url": "/api/budget-departements/departement/{departementId}",
+        "method": "GET",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": [
+          {
+            "id": "number",
+            "annee": "number",
+            "montant": "number",
+            "departementId": "number",
+            "budgetId": "number"
+          }
+        ]
+      },
+      "getByDepartementAndYear": {
+        "url": "/api/budget-departements/departement/{departementId}/year/{annee}",
+        "method": "GET",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": {
+          "id": "number",
+          "annee": "number",
+          "montant": "number",
+          "departementId": "number",
+          "budgetId": "number"
+        }
+      },
+      "create": {
+        "url": "/api/budget-departements",
+        "method": "POST",
+        "headers": {
+          "Authorization": "Bearer {token}",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "annee": "number",
+          "montant": "number",
+          "departementId": "number",
+          "budgetId": "number"
+        },
+        "response": {
+          "id": "number",
+          "annee": "number",
+          "montant": "number",
+          "departementId": "number",
+          "budgetId": "number"
+        },
+        "validation": "Sum of department budgets must not exceed annual budget"
+      },
+      "update": {
+        "url": "/api/budget-departements/{id}",
+        "method": "PUT",
+        "headers": {
+          "Authorization": "Bearer {token}",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "annee": "number",
+          "montant": "number",
+          "departementId": "number",
+          "budgetId": "number"
+        },
+        "response": {
+          "id": "number",
+          "annee": "number",
+          "montant": "number",
+          "departementId": "number",
+          "budgetId": "number"
+        }
+      },
+      "delete": {
+        "url": "/api/budget-departements/{id}",
+        "method": "DELETE",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        }
+      }
+    }
+  },
+  "departements": {
+    "getAll": {
+      "url": "/api/departements",
+      "method": "GET",
+      "headers": {
+        "Authorization": "Bearer {token}"
+      },
+      "response": [
+        {
+          "id": "number",
+          "nom": "string"
+        }
+      ]
+    },
+    "getById": {
+      "url": "/api/departements/{id}",
+      "method": "GET",
+      "headers": {
+        "Authorization": "Bearer {token}"
+      },
+      "response": {
+        "id": "number",
+        "nom": "string"
+      }
+    },
+    "create": {
+      "url": "/api/departements",
+      "method": "POST",
+      "headers": {
+        "Authorization": "Bearer {token}",
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "nom": "string"
+      },
+      "response": {
+        "id": "number",
+        "nom": "string"
+      }
+    },
+    "update": {
+      "url": "/api/departements/{id}",
+      "method": "PUT",
+      "headers": {
+        "Authorization": "Bearer {token}",
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "nom": "string"
+      },
+      "response": {
+        "id": "number",
+        "nom": "string"
+      }
+    },
+    "delete": {
+      "url": "/api/departements/{id}",
+      "method": "DELETE",
+      "headers": {
+        "Authorization": "Bearer {token}"
+      }
+    }
+  },
+  "depenses": {
+    "getAll": {
+      "url": "/api/depenses",
+      "method": "GET",
+      "headers": {
+        "Authorization": "Bearer {token}"
+      },
+      "response": [
+        {
+          "id": "number",
+          "titre": "string",
+          "description": "string",
+          "type": "string",
+          "date": "string (YYYY-MM-DD)",
+          "montant": "number",
+          "departementId": "number"
+        }
+      ]
+    },
+    "getById": {
+      "url": "/api/depenses/{id}",
+      "method": "GET",
+      "headers": {
+        "Authorization": "Bearer {token}"
+      },
+      "response": {
+        "id": "number",
+        "titre": "string",
+        "description": "string",
+        "type": "string",
+        "date": "string (YYYY-MM-DD)",
+        "montant": "number",
+        "departementId": "number"
+      }
+    },
+    "create": {
+      "url": "/api/depenses",
+      "method": "POST",
+      "headers": {
+        "Authorization": "Bearer {token}",
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "titre": "string",
+        "description": "string",
+        "type": "string",
+        "date": "string (YYYY-MM-DD)",
+        "montant": "number",
+        "departementId": "number"
+      },
+      "response": {
+        "id": "number",
+        "titre": "string",
+        "description": "string",
+        "type": "string",
+        "date": "string (YYYY-MM-DD)",
+        "montant": "number",
+        "departementId": "number"
+      }
+    },
+    "update": {
+      "url": "/api/depenses/{id}",
+      "method": "PUT",
+      "headers": {
+        "Authorization": "Bearer {token}",
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "titre": "string",
+        "description": "string",
+        "type": "string",
+        "date": "string (YYYY-MM-DD)",
+        "montant": "number",
+        "departementId": "number"
+      },
+      "response": {
+        "id": "number",
+        "titre": "string",
+        "description": "string",
+        "type": "string",
+        "date": "string (YYYY-MM-DD)",
+        "montant": "number",
+        "departementId": "number"
+      }
+    },
+    "delete": {
+      "url": "/api/depenses/{id}",
+      "method": "DELETE",
+      "headers": {
+        "Authorization": "Bearer {token}"
+      }
+    }
+  },
+  "utilisateurs": {
+    "getAll": {
+      "url": "/api/utilisateurs",
+      "method": "GET",
+      "headers": {
+        "Authorization": "Bearer {token}"
+      },
+      "response": [
+        {
+          "id": "number",
+          "nom": "string",
+          "email": "string",
+          "role": "string",
+          "matricule": "string",
+          "departementId": "number"
+        }
+      ]
+    },
+    "getById": {
+      "url": "/api/utilisateurs/{id}",
+      "method": "GET",
+      "headers": {
+        "Authorization": "Bearer {token}"
+      },
+      "response": {
+        "id": "number",
+        "nom": "string",
+        "email": "string",
+        "role": "string",
+        "matricule": "string",
+        "departementId": "number"
+      }
+    },
+    "create": {
+      "url": "/api/utilisateurs",
+      "method": "POST",
+      "headers": {
+        "Authorization": "Bearer {token}",
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "nom": "string",
+        "email": "string",
+        "role": "string",
+        "matricule": "string",
+        "departementId": "number"
+      },
+      "response": {
+        "id": "number",
+        "nom": "string",
+        "email": "string",
+        "role": "string",
+        "matricule": "string",
+        "departementId": "number"
+      }
+    },
+    "update": {
+      "url": "/api/utilisateurs/{id}",
+      "method": "PUT",
+      "headers": {
+        "Authorization": "Bearer {token}",
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "nom": "string",
+        "email": "string",
+        "role": "string",
+        "matricule": "string",
+        "departementId": "number"
+      },
+      "response": {
+        "id": "number",
+        "nom": "string",
+        "email": "string",
+        "role": "string",
+        "matricule": "string",
+        "departementId": "number"
+      }
+    },
+    "delete": {
+      "url": "/api/utilisateurs/{id}",
+      "method": "DELETE",
+      "headers": {
+        "Authorization": "Bearer {token}"
+      }
+    }
+  },
+  "notifications": {
+    "getAll": {
+      "url": "/api/notifications",
+      "method": "GET",
+      "headers": {
+        "Authorization": "Bearer {token}"
+      },
+      "response": [
+        {
+          "id": "number",
+          "utilisateurId": "number"
+        }
+      ]
+    },
+    "getById": {
+      "url": "/api/notifications/{id}",
+      "method": "GET",
+      "headers": {
+        "Authorization": "Bearer {token}"
+      },
+      "response": {
+        "id": "number",
+        "utilisateurId": "number"
+      }
+    },
+    "create": {
+      "url": "/api/notifications",
+      "method": "POST",
+      "headers": {
+        "Authorization": "Bearer {token}",
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "utilisateurId": "number"
+      },
+      "response": {
+        "id": "number",
+        "utilisateurId": "number"
+      }
+    },
+    "update": {
+      "url": "/api/notifications/{id}",
+      "method": "PUT",
+      "headers": {
+        "Authorization": "Bearer {token}",
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "utilisateurId": "number"
+      },
+      "response": {
+        "id": "number",
+        "utilisateurId": "number"
+      }
+    },
+    "delete": {
+      "url": "/api/notifications/{id}",
+      "method": "DELETE",
+      "headers": {
+        "Authorization": "Bearer {token}"
+      }
+    }
+  },
+  "swagger": {
+    "ui": "http://localhost:8080/swagger-ui.html",
+    "json": "http://localhost:8080/v3/api-docs"
+  },
+  "notes": {
+    "authentication": "All protected endpoints require Authorization header with Bearer token",
+    "cors": "CORS is enabled for all origins",
+    "budgetValidation": "Department budgets cannot exceed the total annual budget",
+    "dateFormat": "All dates are in YYYY-MM-DD format",
+    "errorHandling": "All endpoints return appropriate HTTP status codes and error messages"
+  }
+} 

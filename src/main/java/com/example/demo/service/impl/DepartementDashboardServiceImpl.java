@@ -56,14 +56,14 @@ public class DepartementDashboardServiceImpl implements DepartementDashboardServ
         // Get current year budget for the department
         int currentYear = LocalDate.now().getYear();
         Optional<BudgetDepartement> budgetDeptOpt = budgetDepartementRepository
-                .findByDepartementAndBudgetAnnee(departement, currentYear);
+                .findByDepartementIdAndAnnee(departement.getId(), currentYear);
 
         if (budgetDeptOpt.isPresent()) {
-            Budget budget = budgetDeptOpt.get().getBudget();
+            BudgetDepartement budgetDept = budgetDeptOpt.get();
             BudgetDTO budgetDTO = new BudgetDTO();
-            budgetDTO.setId(budget.getId());
-            budgetDTO.setAnnee(budget.getAnnee());
-            budgetDTO.setMontant(budget.getMontant());
+            budgetDTO.setId(budgetDept.getId());
+            budgetDTO.setAnnee(budgetDept.getAnnee());
+            budgetDTO.setMontant(budgetDept.getMontant());
             dashboard.setBudget(budgetDTO);
         }
 

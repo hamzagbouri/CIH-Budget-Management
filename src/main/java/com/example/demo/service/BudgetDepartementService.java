@@ -9,4 +9,7 @@ public interface BudgetDepartementService {
     BudgetDepartementDTO save(BudgetDepartementDTO budgetDepartementDTO);
     BudgetDepartementDTO update(Integer id, BudgetDepartementDTO budgetDepartementDTO);
     void delete(Integer id);
+    List<BudgetDepartementDTO> findByAnnee(Integer annee);
+    List<BudgetDepartementDTO> findByDepartement(Integer departementId);
+    BudgetDepartementDTO findByDepartementAndYear(Integer departementId, Integer annee);
 } 

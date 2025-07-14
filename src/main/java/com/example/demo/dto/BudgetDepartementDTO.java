@@ -5,7 +5,8 @@ import lombok.Data;
 @Data
 public class BudgetDepartementDTO {
     private Integer id;
+    private Integer annee;
+    private Float montant;
     private Integer departementId;
-    private Integer budgetId;
     // getters & setters
 } 
