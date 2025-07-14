@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import cihLogo from '../assets/Cih.png';
 
 const links = [
@@ -9,6 +10,20 @@ const links = [
 ];
 
 export default function AdminSidebar() {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/auth');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      // Still navigate to auth page even if logout fails
+      navigate('/auth');
+    }
+  };
+
   return (
     <aside className="flex flex-col justify-between w-full md:w-64 min-h-screen bg-[#e9eff2] px-6 py-8">
       <div>
@@ -38,7 +53,10 @@ export default function AdminSidebar() {
         </nav>
       </div>
       {/* Logout button */}
-      <button className="w-full mt-8 py-3 rounded-lg bg-[#F15A29] hover:bg-orange-600 text-white font-semibold text-lg transition-colors">
+      <button 
+        className="w-full mt-8 py-3 rounded-lg bg-[#F15A29] hover:bg-orange-600 text-white font-semibold text-lg transition-colors"
+        onClick={handleLogout}
+      >
         Deconnexion
       </button>
     </aside>

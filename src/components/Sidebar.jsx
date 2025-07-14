@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import cihLogo from '../assets/Cih.png';
 
 const navItems = [
@@ -14,9 +15,21 @@ export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false); // desktop
   const navigate = useNavigate();
   const location = useLocation();
+  const { logout } = useAuth();
 
   // Sidebar width classes
   const sidebarWidth = collapsed ? 'md:w-20' : 'md:w-72';
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/auth');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      // Still navigate to auth page even if logout fails
+      navigate('/auth');
+    }
+  };
 
   return (
     <>
@@ -78,8 +91,10 @@ export default function Sidebar() {
           </nav>
         </div>
         {/* Logout button */}
-        <button className={`w-full mt-2 md:mt-8 py-2 md:py-3 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-semibold text-base md:text-lg transition-colors ${collapsed ? 'md:w-12 md:h-12 md:p-0 flex items-center justify-center' : ''}`}
+        <button 
+          className={`w-full mt-2 md:mt-8 py-2 md:py-3 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-semibold text-base md:text-lg transition-colors ${collapsed ? 'md:w-12 md:h-12 md:p-0 flex items-center justify-center' : ''}`}
           title={collapsed ? 'Deconnexion' : undefined}
+          onClick={handleLogout}
         >
           <span className="material-icons md:mr-2">logout</span>
           {!collapsed && <span className="hidden md:inline">Deconnexion</span>}

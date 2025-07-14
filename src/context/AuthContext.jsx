@@ -36,9 +36,18 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const logout = () => {
-    authService.logout();
-    setUser(null);
+  const logout = async () => {
+    try {
+      setLoading(true);
+      await authService.logout();
+      setUser(null);
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Even if logout fails, clear the user state
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const register = async (userData) => {

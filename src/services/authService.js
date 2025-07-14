@@ -31,6 +31,28 @@ export const authService = {
     }
   },
 
+  // Logout user
+  async logout() {
+    try {
+      const token = this.getToken();
+      if (token) {
+        // Call backend logout endpoint
+        await apiClient.post('/api/auth/logout', {}, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+      }
+    } catch (error) {
+      // Even if logout API call fails, we still want to clear local storage
+      console.warn('Logout API call failed:', error);
+    } finally {
+      // Always clear local storage
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('user');
+    }
+  },
+
   // Update password
   async updatePassword(userId, currentPassword, newPassword) {
     try {
@@ -52,12 +74,6 @@ export const authService = {
     } catch (error) {
       throw error.response?.data || { message: 'Erreur de test d\'authentification' };
     }
-  },
-
-  // Logout
-  logout() {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('user');
   },
 
   // Get current user
