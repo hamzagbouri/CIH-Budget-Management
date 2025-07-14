@@ -33,7 +33,7 @@ export default function Dashboard() {
       currency: 'MAD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(amount);
+    }).format(amount || 0);
   };
 
   const formatDate = (dateString) => {
@@ -45,9 +45,10 @@ export default function Dashboard() {
   };
 
   const getBudgetUsagePercentage = () => {
-    if (!dashboardData?.budget?.montant) return 0;
-    const used = dashboardData.budget.montant - (dashboardData.budgetRestant || 0);
-    return Math.round((used / dashboardData.budget.montant) * 100);
+    if (!dashboardData?.totalDepenses) return 0;
+    const totalBudget = (dashboardData.totalDepenses || 0) + (dashboardData.budgetRestant || 0);
+    if (totalBudget === 0) return 0;
+    return Math.round((dashboardData.totalDepenses / totalBudget) * 100);
   };
 
   const getBudgetStatusColor = (percentage) => {
@@ -96,7 +97,7 @@ export default function Dashboard() {
             Tableau de bord
           </h1>
           <p className="text-gray-600">
-            Bienvenue, {user?.nom} • {dashboardData?.departement?.nom}
+            Bienvenue, {user?.nom} • {dashboardData?.departementNom}
           </p>
         </div>
 
@@ -105,7 +106,7 @@ export default function Dashboard() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-semibold mb-2">
-                {dashboardData?.departement?.nom}
+                {dashboardData?.departementNom}
               </h2>
               <p className="text-blue-100">
                 Gestionnaire: {user?.nom} • Matricule: {user?.matricule}
@@ -121,14 +122,14 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <StatCard
             label="Budget Total"
-            value={formatCurrency(dashboardData?.budget?.montant || 0)}
+            value={formatCurrency((dashboardData?.totalDepenses || 0) + (dashboardData?.budgetRestant || 0))}
             icon="account_balance"
             color="blue"
             trend="up"
           />
           <StatCard
-            label="Budget Utilisé"
-            value={formatCurrency((dashboardData?.budget?.montant || 0) - (dashboardData?.budgetRestant || 0))}
+            label="Dépenses Totales"
+            value={formatCurrency(dashboardData?.totalDepenses || 0)}
             icon="trending_up"
             color="orange"
             trend="up"
@@ -161,7 +162,7 @@ export default function Dashboard() {
           </div>
           <div className="flex justify-between text-sm text-gray-600 mt-2">
             <span>0 DH</span>
-            <span>{formatCurrency(dashboardData?.budget?.montant || 0)}</span>
+            <span>{formatCurrency((dashboardData?.totalDepenses || 0) + (dashboardData?.budgetRestant || 0))}</span>
           </div>
         </div>
 
@@ -171,25 +172,30 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-800">Dépenses récentes</h3>
               <span className="text-sm text-gray-500">
-                {dashboardData?.recentesDepenses?.length || 0} dépenses
+                {dashboardData?.recentDepenses?.length || 0} dépense{dashboardData?.recentDepenses?.length !== 1 ? 's' : ''}
               </span>
             </div>
           </div>
           
-          {dashboardData?.recentesDepenses?.length > 0 ? (
+          {dashboardData?.recentDepenses?.length > 0 ? (
             <div className="divide-y divide-gray-100">
-              {dashboardData.recentesDepenses.map((expense, index) => (
+              {dashboardData.recentDepenses.map((expense, index) => (
                 <div key={expense.id || index} className="p-6 hover:bg-gray-50 transition-colors">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                         expense.type === 'OPERATIONNEL' ? 'bg-blue-100 text-blue-600' :
                         expense.type === 'INVESTISSEMENT' ? 'bg-purple-100 text-purple-600' :
+                        expense.type === 'FORMATION' ? 'bg-green-100 text-green-600' :
+                        expense.type === 'MAINTENANCE' ? 'bg-orange-100 text-orange-600' :
                         'bg-gray-100 text-gray-600'
                       }`}>
                         <span className="material-icons text-lg">
                           {expense.type === 'OPERATIONNEL' ? 'build' :
-                           expense.type === 'INVESTISSEMENT' ? 'trending_up' : 'receipt'}
+                           expense.type === 'INVESTISSEMENT' ? 'trending_up' :
+                           expense.type === 'FORMATION' ? 'school' :
+                           expense.type === 'MAINTENANCE' ? 'handyman' :
+                           'receipt'}
                         </span>
                       </div>
                       <div>
@@ -202,6 +208,8 @@ export default function Dashboard() {
                           <span className={`text-xs px-2 py-1 rounded-full ${
                             expense.type === 'OPERATIONNEL' ? 'bg-blue-100 text-blue-700' :
                             expense.type === 'INVESTISSEMENT' ? 'bg-purple-100 text-purple-700' :
+                            expense.type === 'FORMATION' ? 'bg-green-100 text-green-700' :
+                            expense.type === 'MAINTENANCE' ? 'bg-orange-100 text-orange-700' :
                             'bg-gray-100 text-gray-700'
                           }`}>
                             {expense.type}
