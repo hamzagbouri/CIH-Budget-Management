@@ -7,21 +7,26 @@ export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Static credentials
-    if (
-      (email === 'admin@cihbank.ma' && password === 'admin') ||
-      (email === 'yassine@cihbank.ma' && password === 'user') ||
-      (email === 'sara@cihbank.ma' && password === 'user')
-    ) {
-      login(email);
-      navigate('/dashboard');
-    } else {
-      setError('Email ou mot de passe incorrect');
+    setError('');
+    setIsLoading(true);
+
+    try {
+      const result = await login(email, password);
+      if (result.success) {
+        navigate('/dashboard');
+      } else {
+        setError(result.message);
+      }
+    } catch (error) {
+      setError('Erreur de connexion. Veuillez réessayer.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -61,6 +66,7 @@ export default function Auth() {
                 className={`w-full px-4 py-2 rounded-md bg-transparent border ${error ? 'border-red-500' : 'border-blue-400'} text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-blue-400`}
                 placeholder=""
                 required
+                disabled={isLoading}
               />
             </div>
             <div className="flex flex-col gap-1">
@@ -75,6 +81,7 @@ export default function Auth() {
                 className={`w-full px-4 py-2 rounded-md bg-transparent border ${error ? 'border-red-500' : 'border-blue-400'} text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-blue-400`}
                 placeholder=""
                 required
+                disabled={isLoading}
               />
             </div>
             <a href="#" className="text-sm text-blue-200 hover:underline self-start">Mot de passe oublié ?</a>
@@ -87,9 +94,10 @@ export default function Auth() {
               <span className="absolute -right-3 top-5 w-1 h-1 rounded-full bg-pink-300 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
               <button
                 type="submit"
-                className="relative px-8 py-2 rounded-full font-semibold text-white bg-gradient-to-r from-blue-700 to-indigo-500 shadow-md border border-transparent transition-all duration-300 text-xl focus:outline-none focus:ring-2 focus:ring-orange-400 group-hover:bg-transparent group-hover:border-orange-500 group-hover:shadow-none group-hover:text-black"
+                disabled={isLoading}
+                className="relative px-8 py-2 rounded-full font-semibold text-white bg-gradient-to-r from-blue-700 to-indigo-500 shadow-md border border-transparent transition-all duration-300 text-xl focus:outline-none focus:ring-2 focus:ring-orange-400 group-hover:bg-transparent group-hover:border-orange-500 group-hover:shadow-none group-hover:text-black disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Connexion
+                {isLoading ? 'Connexion...' : 'Se connecter'}
               </button>
             </div>
           </form>
