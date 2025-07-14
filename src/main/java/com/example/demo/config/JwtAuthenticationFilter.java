@@ -25,8 +25,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         
+        // Skip JWT processing for authentication endpoints
+        String requestURI = request.getRequestURI();
+        if (requestURI.startsWith("/api/auth/")) {
+            logger.info("Skipping JWT processing for auth endpoint: " + requestURI);
+            filterChain.doFilter(request, response);
+            return;
+        }
+        
         final String authorizationHeader = request.getHeader("Authorization");
-        logger.info("Processing request: " + request.getRequestURI() + " with Authorization: " + (authorizationHeader != null ? "present" : "missing"));
+        logger.info("Processing request: " + requestURI + " with Authorization: " + (authorizationHeader != null ? "present" : "missing"));
 
         String username = null;
         String jwt = null;

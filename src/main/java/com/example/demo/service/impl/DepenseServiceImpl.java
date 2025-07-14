@@ -1,19 +1,25 @@
 package com.example.demo.service.impl;
 
 import com.example.demo.dto.DepenseDTO;
+import com.example.demo.entity.Departement;
 import com.example.demo.entity.Depense;
+import com.example.demo.repository.DepartementRepository;
 import com.example.demo.repository.DepenseRepository;
 import com.example.demo.service.DepenseService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
 public class DepenseServiceImpl implements DepenseService {
     @Autowired
     private DepenseRepository depenseRepository;
+    
+    @Autowired
+    private DepartementRepository departementRepository;
 
     private DepenseDTO toDTO(Depense d) {
         DepenseDTO dto = new DepenseDTO();
@@ -35,7 +41,15 @@ public class DepenseServiceImpl implements DepenseService {
         d.setType(dto.getType());
         d.setDate(dto.getDate());
         d.setMontant(dto.getMontant());
-        // Pour departement, il faut injecter DepartementRepository si besoin
+        
+        // Set department if departementId is provided
+        if (dto.getDepartementId() != null) {
+            Optional<Departement> departementOpt = departementRepository.findById(dto.getDepartementId());
+            if (departementOpt.isPresent()) {
+                d.setDepartement(departementOpt.get());
+            }
+        }
+        
         return d;
     }
 
