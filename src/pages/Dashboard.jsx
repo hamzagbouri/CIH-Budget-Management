@@ -4,12 +4,15 @@ import { dashboardService } from '../services';
 import Sidebar from '../components/Sidebar';
 import StatCard from '../components/StatCard';
 import LoadingSpinner from '../components/LoadingSpinner';
+import Alert from '../components/Alert';
+import BudgetInfo from '../components/BudgetInfo';
 
 export default function Dashboard() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dashboardData, setDashboardData] = useState(null);
+  const [alerts, setAlerts] = useState([]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -20,11 +23,44 @@ export default function Dashboard() {
       setLoading(true);
       const data = await dashboardService.getDepartementDashboard();
       setDashboardData(data);
+      
+      // Add budget alerts
+      if (data.budget) {
+        const percentage = data.budget.montant > 0 
+          ? (data.totalDepenses / data.budget.montant) * 100 
+          : 0;
+        
+        if (percentage >= 90) {
+          addAlert('warning', 'Budget presque épuisé', 
+            `Votre département a utilisé ${percentage.toFixed(1)}% de son budget. Il reste ${formatCurrency(data.budgetRestant)}.`);
+        }
+        
+        if (percentage >= 100) {
+          addAlert('error', 'Budget dépassé', 
+            'Votre département a dépassé son budget pour cette année. Contactez l\'administrateur.');
+        }
+      }
     } catch (err) {
       setError(err.message || 'Erreur lors du chargement du tableau de bord');
     } finally {
       setLoading(false);
     }
+  };
+
+  const addAlert = (type, title, message, autoClose = true) => {
+    const id = Date.now();
+    const newAlert = { id, type, title, message };
+    setAlerts(prev => [...prev, newAlert]);
+    
+    if (autoClose) {
+      setTimeout(() => {
+        removeAlert(id);
+      }, 8000);
+    }
+  };
+
+  const removeAlert = (id) => {
+    setAlerts(prev => prev.filter(alert => alert.id !== id));
   };
 
   const formatCurrency = (amount) => {
@@ -84,15 +120,12 @@ export default function Dashboard() {
       <div className="flex flex-col md:flex-row min-h-screen bg-[#e9eff2]">
         <Sidebar />
         <main className="flex-1 p-10">
-          <div className="bg-red-50 border border-red-200 rounded-xl p-6">
-            <div className="flex items-center">
-              <span className="material-icons text-red-500 mr-3">error</span>
-              <div>
-                <h3 className="text-red-800 font-semibold">Erreur</h3>
-                <p className="text-red-700">{error}</p>
-              </div>
-            </div>
-          </div>
+          <Alert
+            type="error"
+            title="Erreur"
+            message={error}
+            onClose={() => setError(null)}
+          />
         </main>
       </div>
     );
@@ -103,15 +136,11 @@ export default function Dashboard() {
       <div className="flex flex-col md:flex-row min-h-screen bg-[#e9eff2]">
         <Sidebar />
         <main className="flex-1 p-10">
-          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
-            <div className="flex items-center">
-              <span className="material-icons text-yellow-500 mr-3">warning</span>
-              <div>
-                <h3 className="text-yellow-800 font-semibold">Aucune donnée</h3>
-                <p className="text-yellow-700">Aucune donnée disponible pour votre département</p>
-              </div>
-            </div>
-          </div>
+          <Alert
+            type="warning"
+            title="Aucune donnée"
+            message="Aucune donnée disponible pour votre département"
+          />
         </main>
       </div>
     );
@@ -130,6 +159,32 @@ export default function Dashboard() {
             Bienvenue, {user?.nom} - Département {dashboardData.departementNom}
           </p>
         </div>
+
+        {/* Alerts */}
+        <div className="mb-6 space-y-3">
+          {alerts.map(alert => (
+            <Alert
+              key={alert.id}
+              type={alert.type}
+              title={alert.title}
+              message={alert.message}
+              onClose={() => removeAlert(alert.id)}
+            />
+          ))}
+        </div>
+
+        {/* Budget Overview */}
+        {dashboardData.budget && (
+          <div className="mb-8">
+            <BudgetInfo
+              totalBudget={dashboardData.budget.montant}
+              usedAmount={dashboardData.totalDepenses}
+              remainingAmount={dashboardData.budgetRestant}
+              title={`Budget ${dashboardData.budget.annee} - ${dashboardData.departementNom}`}
+              size="lg"
+            />
+          </div>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -163,46 +218,44 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Budget Progress */}
+        {/* Quick Actions */}
         <div className="bg-white rounded-2xl p-6 mb-8 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-800">
-              Utilisation du Budget - {dashboardData.budget?.annee || new Date().getFullYear()}
-            </h2>
-            <span className={`text-sm font-medium ${getBudgetStatusColor(getBudgetUsagePercentage())}`}>
-              {getBudgetUsagePercentage().toFixed(1)}% utilisé
-            </span>
-          </div>
-          
-          <div className="w-full bg-gray-200 rounded-full h-3 mb-4">
-            <div
-              className={`h-3 rounded-full transition-all duration-500 ${
-                getBudgetUsagePercentage() >= 90 ? 'bg-red-500' :
-                getBudgetUsagePercentage() >= 75 ? 'bg-orange-500' : 'bg-green-500'
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Actions Rapides</h3>
+          <div className="flex flex-wrap gap-4">
+            <button
+              onClick={() => window.location.href = '/depenses'}
+              disabled={dashboardData.budgetRestant <= 0}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                dashboardData.budgetRestant <= 0 
+                  ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
               }`}
-              style={{ width: `${Math.min(getBudgetUsagePercentage(), 100)}%` }}
-            ></div>
-          </div>
-          
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <p className="text-2xl font-bold text-blue-600">
-                {formatCurrency(dashboardData.budget?.montant || 0)}
-              </p>
-              <p className="text-sm text-gray-500">Budget Total</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-orange-600">
-                {formatCurrency(dashboardData.totalDepenses || 0)}
-              </p>
-              <p className="text-sm text-gray-500">Dépensé</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-green-600">
-                {formatCurrency(dashboardData.budgetRestant || 0)}
-              </p>
-              <p className="text-sm text-gray-500">Restant</p>
-            </div>
+              title={dashboardData.budgetRestant <= 0 ? 'Budget épuisé' : 'Ajouter une nouvelle dépense'}
+            >
+              <span className="material-icons">add</span>
+              Nouvelle Dépense
+            </button>
+            <button
+              onClick={() => window.location.href = '/historique'}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <span className="material-icons">history</span>
+              Historique
+            </button>
+            <button
+              onClick={() => window.location.href = '/rapports'}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              <span className="material-icons">assessment</span>
+              Rapports
+            </button>
+            <button
+              onClick={fetchDashboardData}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              <span className="material-icons">refresh</span>
+              Actualiser
+            </button>
           </div>
         </div>
 
@@ -256,40 +309,16 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Quick Actions */}
-        <div className="bg-white rounded-2xl p-6 mt-8 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Actions Rapides</h3>
-          <div className="flex flex-wrap gap-4">
-            <button
-              onClick={() => window.location.href = '/depenses'}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <span className="material-icons">add</span>
-              Nouvelle Dépense
-            </button>
-            <button
-              onClick={() => window.location.href = '/historique'}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              <span className="material-icons">history</span>
-              Historique
-            </button>
-            <button
-              onClick={() => window.location.href = '/rapports'}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-            >
-              <span className="material-icons">assessment</span>
-              Rapports
-            </button>
-            <button
-              onClick={fetchDashboardData}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-            >
-              <span className="material-icons">refresh</span>
-              Actualiser
-            </button>
+        {/* Budget Tips */}
+        {dashboardData.budgetRestant > 0 && dashboardData.budgetRestant < (dashboardData.budget?.montant || 0) * 0.1 && (
+          <div className="mt-8">
+            <Alert
+              type="info"
+              title="Conseil de gestion"
+              message="Votre budget est presque épuisé. Pensez à prioriser vos dépenses et à planifier pour l'année prochaine."
+            />
           </div>
-        </div>
+        )}
       </main>
     </div>
   );

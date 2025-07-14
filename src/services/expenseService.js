@@ -49,5 +49,15 @@ export const expenseService = {
     } catch (error) {
       throw error.response?.data || { message: 'Erreur lors de la suppression de la dépense' };
     }
+  },
+
+  // Get remaining budget for department and year
+  async getRemainingBudget(departmentId, year) {
+    try {
+      const response = await apiClient.get(`/api/depenses/remaining-budget/${departmentId}/${year}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Erreur lors de la récupération du budget restant' };
+    }
   }
 }; 

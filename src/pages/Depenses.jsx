@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { expenseService, departmentService } from '../services';
+import { expenseService, departmentService, budgetDepartmentService } from '../services';
 import Sidebar from '../components/Sidebar';
 import Modal from '../components/Modal';
 import FormInput from '../components/FormInput';
 import SelectInput from '../components/SelectInput';
 import Table from '../components/Table';
 import LoadingSpinner from '../components/LoadingSpinner';
+import Alert from '../components/Alert';
+import BudgetInfo from '../components/BudgetInfo';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title } from 'chart.js';
 import { Pie, Bar } from 'react-chartjs-2';
 
@@ -18,11 +20,16 @@ export default function Depenses() {
   const [error, setError] = useState(null);
   const [expenses, setExpenses] = useState([]);
   const [departments, setDepartments] = useState([]);
+  const [budgetDepartments, setBudgetDepartments] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [remainingBudget, setRemainingBudget] = useState(0);
+  const [budgetInfo, setBudgetInfo] = useState(null);
+  const [alerts, setAlerts] = useState([]);
+  
   const [filters, setFilters] = useState({
     type: '',
     departementId: '',
@@ -49,17 +56,66 @@ export default function Depenses() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [expensesData, departmentsData] = await Promise.all([
+      const [expensesData, departmentsData, budgetDepartmentsData] = await Promise.all([
         expenseService.getAllExpenses(),
-        departmentService.getAllDepartments()
+        departmentService.getAllDepartments(),
+        budgetDepartmentService.getAllBudgetDepartments()
       ]);
+      
       setExpenses(expensesData);
       setDepartments(departmentsData);
+      setBudgetDepartments(budgetDepartmentsData);
+      
+      // Calculate budget info for user's department
+      if (user?.departementId) {
+        await fetchBudgetInfo(user.departementId);
+      }
     } catch (err) {
       setError(err.message || 'Erreur lors du chargement des données');
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchBudgetInfo = async (departmentId) => {
+    try {
+      const currentYear = new Date().getFullYear();
+      const remaining = await expenseService.getRemainingBudget(departmentId, currentYear);
+      setRemainingBudget(remaining);
+      
+      // Get department budget
+      const deptBudget = budgetDepartments.find(bd => 
+        bd.departementId === departmentId && bd.annee === currentYear
+      );
+      
+      if (deptBudget) {
+        const usedAmount = deptBudget.montant - remaining;
+        setBudgetInfo({
+          totalBudget: deptBudget.montant,
+          usedAmount: usedAmount,
+          remainingAmount: remaining,
+          year: currentYear
+        });
+      }
+    } catch (err) {
+      console.error('Erreur lors de la récupération du budget:', err);
+    }
+  };
+
+  const addAlert = (type, title, message, autoClose = true) => {
+    const id = Date.now();
+    const newAlert = { id, type, title, message };
+    setAlerts(prev => [...prev, newAlert]);
+    
+    if (autoClose) {
+      setTimeout(() => {
+        removeAlert(id);
+      }, 5000);
+    }
+  };
+
+  const removeAlert = (id) => {
+    setAlerts(prev => prev.filter(alert => alert.id !== id));
   };
 
   const formatCurrency = (amount) => {
@@ -95,9 +151,35 @@ export default function Depenses() {
     return department ? department.nom : 'Inconnu';
   };
 
+  const validateBudget = (amount) => {
+    if (remainingBudget <= 0) {
+      return {
+        valid: false,
+        message: 'Budget épuisé pour cette année. Impossible d\'ajouter de nouvelles dépenses.'
+      };
+    }
+    
+    if (amount > remainingBudget) {
+      return {
+        valid: false,
+        message: `Montant trop élevé. Budget restant : ${formatCurrency(remainingBudget)}`
+      };
+    }
+    
+    return { valid: true };
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
+
+    const amount = Number(expenseForm.montant);
+    const budgetValidation = validateBudget(amount);
+    
+    if (!budgetValidation.valid) {
+      addAlert('error', 'Budget insuffisant', budgetValidation.message);
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -106,7 +188,7 @@ export default function Depenses() {
         description: expenseForm.description,
         type: expenseForm.type,
         date: expenseForm.date,
-        montant: Number(expenseForm.montant),
+        montant: amount,
         departementId: Number(expenseForm.departementId)
       };
 
@@ -115,16 +197,23 @@ export default function Depenses() {
         const updatedExpense = await expenseService.updateExpense(selectedExpense.id, expenseData);
         setExpenses(prev => prev.map(exp => exp.id === selectedExpense.id ? updatedExpense : exp));
         setShowEditModal(false);
+        addAlert('success', 'Dépense mise à jour', 'La dépense a été modifiée avec succès');
       } else {
         // Create new expense
         const newExpense = await expenseService.createExpense(expenseData);
         setExpenses(prev => [newExpense, ...prev]);
         setShowAddModal(false);
+        addAlert('success', 'Dépense créée', 'La nouvelle dépense a été ajoutée avec succès');
+        
+        // Update budget info
+        if (user?.departementId) {
+          await fetchBudgetInfo(user.departementId);
+        }
       }
 
       resetForm();
     } catch (err) {
-      setError(err.message || 'Erreur lors de la sauvegarde de la dépense');
+      addAlert('error', 'Erreur', err.message || 'Erreur lors de la sauvegarde de la dépense');
     } finally {
       setSubmitting(false);
     }
@@ -138,8 +227,14 @@ export default function Depenses() {
       setExpenses(prev => prev.filter(exp => exp.id !== selectedExpense.id));
       setShowDeleteModal(false);
       setSelectedExpense(null);
+      addAlert('success', 'Dépense supprimée', 'La dépense a été supprimée avec succès');
+      
+      // Update budget info
+      if (user?.departementId) {
+        await fetchBudgetInfo(user.departementId);
+      }
     } catch (err) {
-      setError(err.message || 'Erreur lors de la suppression');
+      addAlert('error', 'Erreur', err.message || 'Erreur lors de la suppression');
     }
   };
 
@@ -170,8 +265,21 @@ export default function Depenses() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setExpenseForm(prev => ({ ...prev, [name]: value }));
+    
+    // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+    
+    // Validate budget when amount changes
+    if (name === 'montant' && value) {
+      const amount = Number(value);
+      if (amount > remainingBudget) {
+        setErrors(prev => ({ 
+          ...prev, 
+          montant: `Montant maximum autorisé : ${formatCurrency(remainingBudget)}` 
+        }));
+      }
     }
   };
 
@@ -207,6 +315,11 @@ export default function Depenses() {
   };
 
   const openAddModal = () => {
+    if (remainingBudget <= 0) {
+      addAlert('warning', 'Budget épuisé', 'Vous ne pouvez pas ajouter de nouvelles dépenses car le budget est épuisé pour cette année.');
+      return;
+    }
+    
     resetForm();
     setExpenseForm(prev => ({
       ...prev,
@@ -353,13 +466,39 @@ export default function Depenses() {
           </p>
         </div>
 
+        {/* Alerts */}
+        <div className="mb-6 space-y-3">
+          {alerts.map(alert => (
+            <Alert
+              key={alert.id}
+              type={alert.type}
+              title={alert.title}
+              message={alert.message}
+              onClose={() => removeAlert(alert.id)}
+            />
+          ))}
+        </div>
+
         {/* Error Display */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
-            <div className="flex items-center">
-              <span className="material-icons text-red-500 mr-3">error</span>
-              <p className="text-red-800">{error}</p>
-            </div>
+          <Alert
+            type="error"
+            title="Erreur"
+            message={error}
+            onClose={() => setError(null)}
+          />
+        )}
+
+        {/* Budget Information */}
+        {budgetInfo && (
+          <div className="mb-8">
+            <BudgetInfo
+              totalBudget={budgetInfo.totalBudget}
+              usedAmount={budgetInfo.usedAmount}
+              remainingAmount={budgetInfo.remainingAmount}
+              title={`Budget ${budgetInfo.year} - ${getDepartmentName(user?.departementId)}`}
+              size="lg"
+            />
           </div>
         )}
 
@@ -514,7 +653,13 @@ export default function Depenses() {
               </button>
               <button
                 onClick={openAddModal}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                disabled={remainingBudget <= 0}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                  remainingBudget <= 0 
+                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+                title={remainingBudget <= 0 ? 'Budget épuisé' : 'Ajouter une nouvelle dépense'}
               >
                 <span className="material-icons">add</span>
                 Nouvelle Dépense
@@ -544,6 +689,23 @@ export default function Depenses() {
           title="Nouvelle Dépense"
         >
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Budget Warning */}
+            {remainingBudget <= 0 && (
+              <Alert
+                type="error"
+                title="Budget épuisé"
+                message="Vous ne pouvez pas ajouter de nouvelles dépenses car le budget est épuisé pour cette année."
+              />
+            )}
+
+            {remainingBudget > 0 && (
+              <Alert
+                type="info"
+                title="Budget disponible"
+                message={`Budget restant pour cette année : ${formatCurrency(remainingBudget)}`}
+              />
+            )}
+
             <FormInput
               label="Titre"
               name="titre"
@@ -591,7 +753,7 @@ export default function Depenses() {
             />
 
             <FormInput
-              label="Montant (MAD)"
+              label={`Montant (MAD) - Max: ${formatCurrency(remainingBudget)}`}
               name="montant"
               type="number"
               value={expenseForm.montant}
@@ -600,6 +762,7 @@ export default function Depenses() {
               error={errors.montant}
               placeholder="0"
               min="0"
+              max={remainingBudget}
               step="100"
             />
 
@@ -629,7 +792,7 @@ export default function Depenses() {
               </button>
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || remainingBudget <= 0}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {submitting ? (
