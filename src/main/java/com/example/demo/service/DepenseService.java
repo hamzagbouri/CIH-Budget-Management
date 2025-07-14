@@ -9,4 +9,5 @@ public interface DepenseService {
     DepenseDTO save(DepenseDTO depenseDTO);
     DepenseDTO update(Integer id, DepenseDTO depenseDTO);
     void delete(Integer id);
+    Float getRemainingBudget(Integer departementId, Integer year);
 } 

@@ -1,14 +1,17 @@
 package com.example.demo.service.impl;
 
 import com.example.demo.dto.DepenseDTO;
+import com.example.demo.entity.BudgetDepartement;
 import com.example.demo.entity.Departement;
 import com.example.demo.entity.Depense;
+import com.example.demo.repository.BudgetDepartementRepository;
 import com.example.demo.repository.DepartementRepository;
 import com.example.demo.repository.DepenseRepository;
 import com.example.demo.service.DepenseService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -20,6 +23,9 @@ public class DepenseServiceImpl implements DepenseService {
     
     @Autowired
     private DepartementRepository departementRepository;
+    
+    @Autowired
+    private BudgetDepartementRepository budgetDepartementRepository;
 
     private DepenseDTO toDTO(Depense d) {
         DepenseDTO dto = new DepenseDTO();
@@ -65,19 +71,94 @@ public class DepenseServiceImpl implements DepenseService {
 
     @Override
     public DepenseDTO save(DepenseDTO depenseDTO) {
+        // Validate budget constraints
+        if (!validateBudgetConstraints(depenseDTO)) {
+            throw new RuntimeException("Le montant total des dépenses dépasse le budget du département pour cette année");
+        }
+        
         Depense d = toEntity(depenseDTO);
         return toDTO(depenseRepository.save(d));
     }
 
     @Override
     public DepenseDTO update(Integer id, DepenseDTO depenseDTO) {
+        depenseDTO.setId(id);
+        
+        // Validate budget constraints
+        if (!validateBudgetConstraints(depenseDTO)) {
+            throw new RuntimeException("Le montant total des dépenses dépasse le budget du département pour cette année");
+        }
+        
         Depense d = toEntity(depenseDTO);
-        d.setId(id);
         return toDTO(depenseRepository.save(d));
     }
 
     @Override
     public void delete(Integer id) {
         depenseRepository.deleteById(id);
+    }
+    
+    @Override
+    public Float getRemainingBudget(Integer departementId, Integer year) {
+        // Get the department budget for this year
+        Optional<BudgetDepartement> budgetDeptOpt = budgetDepartementRepository
+                .findByDepartementIdAndAnnee(departementId, year);
+        
+        if (budgetDeptOpt.isEmpty()) {
+            return 0.0f; // No budget defined
+        }
+        
+        BudgetDepartement budgetDept = budgetDeptOpt.get();
+        
+        // Calculate total expenses for this department in this year
+        Float totalExpenses = (float) depenseRepository
+                .findByDepartementAndDateBetween(
+                        budgetDept.getDepartement(),
+                        LocalDate.of(year, 1, 1),
+                        LocalDate.of(year, 12, 31)
+                )
+                .stream()
+                .mapToDouble(Depense::getMontant)
+                .sum();
+        
+        // Return remaining budget
+        return budgetDept.getMontant() - totalExpenses;
+    }
+    
+    private boolean validateBudgetConstraints(DepenseDTO dto) {
+        if (dto.getDepartementId() == null || dto.getMontant() == null || dto.getDate() == null) {
+            return false;
+        }
+        
+        int year = dto.getDate().getYear();
+        
+        // Get the department budget for this year
+        Optional<BudgetDepartement> budgetDeptOpt = budgetDepartementRepository
+                .findByDepartementIdAndAnnee(dto.getDepartementId(), year);
+        
+        if (budgetDeptOpt.isEmpty()) {
+            // No budget defined for this department and year, allow the expense
+            return true;
+        }
+        
+        BudgetDepartement budgetDept = budgetDeptOpt.get();
+        
+        // Calculate total expenses for this department in this year (excluding current record if updating)
+        Float totalExpenses = (float) depenseRepository
+                .findByDepartementAndDateBetween(
+                        budgetDept.getDepartement(),
+                        LocalDate.of(year, 1, 1),
+                        LocalDate.of(year, 12, 31)
+                )
+                .stream()
+                .filter(depense -> !depense.getId().equals(dto.getId())) // Exclude current record if updating
+                .mapToDouble(Depense::getMontant)
+                .sum();
+        
+        // Add the new expense amount
+        totalExpenses += dto.getMontant();
+        
+        // Check if it exceeds the department budget
+        return totalExpenses <= budgetDept.getMontant();
     }
 } 

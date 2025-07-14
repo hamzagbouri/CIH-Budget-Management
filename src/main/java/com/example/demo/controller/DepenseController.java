@@ -44,4 +44,10 @@ public class DepenseController {
     public void delete(@PathVariable Integer id) {
         depenseService.delete(id);
     }
+    
+    @GetMapping("/remaining-budget/{departementId}/{year}")
+    @Operation(summary = "Récupère le budget restant pour un département dans une année spécifique")
+    public Float getRemainingBudget(@PathVariable Integer departementId, @PathVariable Integer year) {
+        return depenseService.getRemainingBudget(departementId, year);
+    }
 } 

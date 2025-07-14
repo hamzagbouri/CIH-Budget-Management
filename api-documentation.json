@@ -399,15 +399,32 @@
       }
     }
   },
-  "depenses": {
-    "getAll": {
-      "url": "/api/depenses",
-      "method": "GET",
-      "headers": {
-        "Authorization": "Bearer {token}"
+      "expenses": {
+      "getAll": {
+        "url": "/api/depenses",
+        "method": "GET",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": [
+          {
+            "id": "number",
+            "titre": "string",
+            "description": "string",
+            "type": "string",
+            "date": "string (YYYY-MM-DD)",
+            "montant": "number",
+            "departementId": "number"
+          }
+        ]
       },
-      "response": [
-        {
+      "getById": {
+        "url": "/api/depenses/{id}",
+        "method": "GET",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": {
           "id": "number",
           "titre": "string",
           "description": "string",
@@ -416,91 +433,100 @@
           "montant": "number",
           "departementId": "number"
         }
-      ]
-    },
-    "getById": {
-      "url": "/api/depenses/{id}",
-      "method": "GET",
-      "headers": {
-        "Authorization": "Bearer {token}"
       },
-      "response": {
-        "id": "number",
-        "titre": "string",
-        "description": "string",
-        "type": "string",
-        "date": "string (YYYY-MM-DD)",
-        "montant": "number",
-        "departementId": "number"
+      "create": {
+        "url": "/api/depenses",
+        "method": "POST",
+        "headers": {
+          "Authorization": "Bearer {token}",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "titre": "string",
+          "description": "string",
+          "type": "string",
+          "date": "string (YYYY-MM-DD)",
+          "montant": "number",
+          "departementId": "number"
+        },
+        "response": {
+          "id": "number",
+          "titre": "string",
+          "description": "string",
+          "type": "string",
+          "date": "string (YYYY-MM-DD)",
+          "montant": "number",
+          "departementId": "number"
+        },
+        "validation": "Total expenses for department in the year must not exceed department budget"
+      },
+      "update": {
+        "url": "/api/depenses/{id}",
+        "method": "PUT",
+        "headers": {
+          "Authorization": "Bearer {token}",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "titre": "string",
+          "description": "string",
+          "type": "string",
+          "date": "string (YYYY-MM-DD)",
+          "montant": "number",
+          "departementId": "number"
+        },
+        "response": {
+          "id": "number",
+          "titre": "string",
+          "description": "string",
+          "type": "string",
+          "date": "string (YYYY-MM-DD)",
+          "montant": "number",
+          "departementId": "number"
+        },
+        "validation": "Total expenses for department in the year must not exceed department budget"
+      },
+      "delete": {
+        "url": "/api/depenses/{id}",
+        "method": "DELETE",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        }
+      },
+      "getRemainingBudget": {
+        "url": "/api/depenses/remaining-budget/{departementId}/{year}",
+        "method": "GET",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": "number (remaining budget amount)"
       }
     },
-    "create": {
-      "url": "/api/depenses",
-      "method": "POST",
-      "headers": {
-        "Authorization": "Bearer {token}",
-        "Content-Type": "application/json"
+    "utilisateurs": {
+      "getAll": {
+        "url": "/api/utilisateurs",
+        "method": "GET",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": [
+          {
+            "id": "number",
+            "nom": "string",
+            "email": "string",
+            "role": "string",
+            "matricule": "string",
+            "departementId": "number"
+          }
+        ]
       },
-      "body": {
-        "titre": "string",
-        "description": "string",
-        "type": "string",
-        "date": "string (YYYY-MM-DD)",
-        "montant": "number",
-        "departementId": "number"
-      },
-      "response": {
-        "id": "number",
-        "titre": "string",
-        "description": "string",
-        "type": "string",
-        "date": "string (YYYY-MM-DD)",
-        "montant": "number",
-        "departementId": "number"
-      }
-    },
-    "update": {
-      "url": "/api/depenses/{id}",
-      "method": "PUT",
-      "headers": {
-        "Authorization": "Bearer {token}",
-        "Content-Type": "application/json"
-      },
-      "body": {
-        "titre": "string",
-        "description": "string",
-        "type": "string",
-        "date": "string (YYYY-MM-DD)",
-        "montant": "number",
-        "departementId": "number"
-      },
-      "response": {
-        "id": "number",
-        "titre": "string",
-        "description": "string",
-        "type": "string",
-        "date": "string (YYYY-MM-DD)",
-        "montant": "number",
-        "departementId": "number"
-      }
-    },
-    "delete": {
-      "url": "/api/depenses/{id}",
-      "method": "DELETE",
-      "headers": {
-        "Authorization": "Bearer {token}"
-      }
-    }
-  },
-  "utilisateurs": {
-    "getAll": {
-      "url": "/api/utilisateurs",
-      "method": "GET",
-      "headers": {
-        "Authorization": "Bearer {token}"
-      },
-      "response": [
-        {
+      "getById": {
+        "url": "/api/utilisateurs/{id}",
+        "method": "GET",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": {
           "id": "number",
           "nom": "string",
           "email": "string",
@@ -508,149 +534,134 @@
           "matricule": "string",
           "departementId": "number"
         }
-      ]
-    },
-    "getById": {
-      "url": "/api/utilisateurs/{id}",
-      "method": "GET",
-      "headers": {
-        "Authorization": "Bearer {token}"
       },
-      "response": {
-        "id": "number",
-        "nom": "string",
-        "email": "string",
-        "role": "string",
-        "matricule": "string",
-        "departementId": "number"
+      "create": {
+        "url": "/api/utilisateurs",
+        "method": "POST",
+        "headers": {
+          "Authorization": "Bearer {token}",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "nom": "string",
+          "email": "string",
+          "role": "string",
+          "matricule": "string",
+          "departementId": "number"
+        },
+        "response": {
+          "id": "number",
+          "nom": "string",
+          "email": "string",
+          "role": "string",
+          "matricule": "string",
+          "departementId": "number"
+        }
+      },
+      "update": {
+        "url": "/api/utilisateurs/{id}",
+        "method": "PUT",
+        "headers": {
+          "Authorization": "Bearer {token}",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "nom": "string",
+          "email": "string",
+          "role": "string",
+          "matricule": "string",
+          "departementId": "number"
+        },
+        "response": {
+          "id": "number",
+          "nom": "string",
+          "email": "string",
+          "role": "string",
+          "matricule": "string",
+          "departementId": "number"
+        }
+      },
+      "delete": {
+        "url": "/api/utilisateurs/{id}",
+        "method": "DELETE",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        }
       }
     },
-    "create": {
-      "url": "/api/utilisateurs",
-      "method": "POST",
-      "headers": {
-        "Authorization": "Bearer {token}",
-        "Content-Type": "application/json"
+    "notifications": {
+      "getAll": {
+        "url": "/api/notifications",
+        "method": "GET",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": [
+          {
+            "id": "number",
+            "utilisateurId": "number"
+          }
+        ]
       },
-      "body": {
-        "nom": "string",
-        "email": "string",
-        "role": "string",
-        "matricule": "string",
-        "departementId": "number"
-      },
-      "response": {
-        "id": "number",
-        "nom": "string",
-        "email": "string",
-        "role": "string",
-        "matricule": "string",
-        "departementId": "number"
-      }
-    },
-    "update": {
-      "url": "/api/utilisateurs/{id}",
-      "method": "PUT",
-      "headers": {
-        "Authorization": "Bearer {token}",
-        "Content-Type": "application/json"
-      },
-      "body": {
-        "nom": "string",
-        "email": "string",
-        "role": "string",
-        "matricule": "string",
-        "departementId": "number"
-      },
-      "response": {
-        "id": "number",
-        "nom": "string",
-        "email": "string",
-        "role": "string",
-        "matricule": "string",
-        "departementId": "number"
-      }
-    },
-    "delete": {
-      "url": "/api/utilisateurs/{id}",
-      "method": "DELETE",
-      "headers": {
-        "Authorization": "Bearer {token}"
-      }
-    }
-  },
-  "notifications": {
-    "getAll": {
-      "url": "/api/notifications",
-      "method": "GET",
-      "headers": {
-        "Authorization": "Bearer {token}"
-      },
-      "response": [
-        {
+      "getById": {
+        "url": "/api/notifications/{id}",
+        "method": "GET",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": {
           "id": "number",
           "utilisateurId": "number"
         }
-      ]
-    },
-    "getById": {
-      "url": "/api/notifications/{id}",
-      "method": "GET",
-      "headers": {
-        "Authorization": "Bearer {token}"
       },
-      "response": {
-        "id": "number",
-        "utilisateurId": "number"
+      "create": {
+        "url": "/api/notifications",
+        "method": "POST",
+        "headers": {
+          "Authorization": "Bearer {token}",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "utilisateurId": "number"
+        },
+        "response": {
+          "id": "number",
+          "utilisateurId": "number"
+        }
+      },
+      "update": {
+        "url": "/api/notifications/{id}",
+        "method": "PUT",
+        "headers": {
+          "Authorization": "Bearer {token}",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "utilisateurId": "number"
+        },
+        "response": {
+          "id": "number",
+          "utilisateurId": "number"
+        }
+      },
+      "delete": {
+        "url": "/api/notifications/{id}",
+        "method": "DELETE",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        }
       }
     },
-    "create": {
-      "url": "/api/notifications",
-      "method": "POST",
-      "headers": {
-        "Authorization": "Bearer {token}",
-        "Content-Type": "application/json"
-      },
-      "body": {
-        "utilisateurId": "number"
-      },
-      "response": {
-        "id": "number",
-        "utilisateurId": "number"
-      }
+    "swagger": {
+      "ui": "http://localhost:8080/swagger-ui.html",
+      "json": "http://localhost:8080/v3/api-docs"
     },
-    "update": {
-      "url": "/api/notifications/{id}",
-      "method": "PUT",
-      "headers": {
-        "Authorization": "Bearer {token}",
-        "Content-Type": "application/json"
-      },
-      "body": {
-        "utilisateurId": "number"
-      },
-      "response": {
-        "id": "number",
-        "utilisateurId": "number"
-      }
-    },
-    "delete": {
-      "url": "/api/notifications/{id}",
-      "method": "DELETE",
-      "headers": {
-        "Authorization": "Bearer {token}"
-      }
+    "notes": {
+      "authentication": "All protected endpoints require Authorization header with Bearer token",
+      "cors": "CORS is enabled for all origins",
+      "budgetValidation": "Department budgets cannot exceed the total annual budget",
+      "dateFormat": "All dates are in YYYY-MM-DD format",
+      "errorHandling": "All endpoints return appropriate HTTP status codes and error messages"
     }
-  },
-  "swagger": {
-    "ui": "http://localhost:8080/swagger-ui.html",
-    "json": "http://localhost:8080/v3/api-docs"
-  },
-  "notes": {
-    "authentication": "All protected endpoints require Authorization header with Bearer token",
-    "cors": "CORS is enabled for all origins",
-    "budgetValidation": "Department budgets cannot exceed the total annual budget",
-    "dateFormat": "All dates are in YYYY-MM-DD format",
-    "errorHandling": "All endpoints return appropriate HTTP status codes and error messages"
   }
 } 
