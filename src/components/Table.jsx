@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export default function Table({ columns, data, onEdit, onDelete, enableSort = false, enablePagination = false, pageSize = 5 }) {
+export default function Table({ columns, data, onEdit, onDelete, enableSort = false, enablePagination = false, pageSize = 5, customActions }) {
   const [sortCol, setSortCol] = useState(null);
   const [sortDir, setSortDir] = useState('asc');
   const [page, setPage] = useState(1);
@@ -39,19 +39,24 @@ export default function Table({ columns, data, onEdit, onDelete, enableSort = fa
                 )}
               </th>
             ))}
-            {(onEdit || onDelete) && <th className="py-2 px-4 border-b text-left font-medium">Actions</th>}
+            {(onEdit || onDelete || customActions) && <th className="py-2 px-4 border-b text-left font-medium">Actions</th>}
           </tr>
         </thead>
         <tbody>
           {pagedData.map((row, idx) => (
             <tr key={idx} className="hover:bg-blue-50">
               {columns.map((col) => (
-                <td key={col.key} className="py-2 px-4 border-b">{row[col.key]}</td>
+                <td key={col.key} className="py-2 px-4 border-b">
+                  {col.render ? col.render(row[col.key], row) : row[col.key]}
+                </td>
               ))}
-              {(onEdit || onDelete) && (
+              {(onEdit || onDelete || customActions) && (
                 <td className="py-2 px-4 border-b">
-                  {onEdit && <button className="text-blue-600 hover:underline mr-2" onClick={() => onEdit(row)}>Éditer</button>}
-                  {onDelete && <button className="text-red-500 hover:underline" onClick={() => onDelete(row)}>Supprimer</button>}
+                  <div className="flex items-center gap-2">
+                    {customActions && customActions(row)}
+                    {onEdit && <button className="text-blue-600 hover:underline mr-2" onClick={() => onEdit(row)}>Éditer</button>}
+                    {onDelete && <button className="text-red-500 hover:underline" onClick={() => onDelete(row)}>Supprimer</button>}
+                  </div>
                 </td>
               )}
             </tr>
