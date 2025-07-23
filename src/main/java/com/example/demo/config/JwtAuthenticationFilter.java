@@ -58,7 +58,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         username, null, Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role))
                     );
                     SecurityContextHolder.getContext().setAuthentication(authentication);
-                    logger.info("Authentication set for user: " + username);
+                    logger.info("Authentication set for user: " + username + " with role: ROLE_" + role);
                 } else {
                     logger.warn("Token validation failed for user: " + username);
                 }
@@ -68,6 +68,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         } else {
             logger.info("No authentication set - username: " + username + ", existing auth: " + (SecurityContextHolder.getContext().getAuthentication() != null));
         }
+        
+        // Debug: Log the final authentication status
+        if (SecurityContextHolder.getContext().getAuthentication() != null) {
+            logger.info("Final authentication: " + SecurityContextHolder.getContext().getAuthentication().getName() + 
+                       " with authorities: " + SecurityContextHolder.getContext().getAuthentication().getAuthorities());
+        } else {
+            logger.warn("No authentication in SecurityContext");
+        }
+        
+        // Debug: Log the request details
+        logger.info("Request URI: " + requestURI);
+        logger.info("Request method: " + request.getMethod());
+        logger.info("Authorization header: " + (authorizationHeader != null ? "present" : "missing"));
         
         filterChain.doFilter(request, response);
     }

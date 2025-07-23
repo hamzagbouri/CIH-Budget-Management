@@ -32,6 +32,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/api-docs/**", "/swagger-ui.html").permitAll()
                 .requestMatchers("/api/dashboard/**").authenticated()
+                .requestMatchers("/api/responsables/**").authenticated()
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session
@@ -39,6 +40,7 @@ public class SecurityConfig {
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         
+        System.out.println("=== SecurityConfig: Filter chain configured ===");
         return http.build();
     }
 

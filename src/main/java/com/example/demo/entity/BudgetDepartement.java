@@ -28,4 +28,37 @@ public class BudgetDepartement {
     @JoinColumn(name = "departement_id", nullable = false)
     @NotNull(message = "Le département est obligatoire")
     private Departement departement;
+
+    // Getters and Setters
+    public Integer getId() {
+        return id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
+
+    public Integer getAnnee() {
+        return annee;
+    }
+
+    public void setAnnee(Integer annee) {
+        this.annee = annee;
+    }
+
+    public Float getMontant() {
+        return montant;
+    }
+
+    public void setMontant(Float montant) {
+        this.montant = montant;
+    }
+
+    public Departement getDepartement() {
+        return departement;
+    }
+
+    public void setDepartement(Departement departement) {
+        this.departement = departement;
+    }
 } 
