@@ -4,9 +4,11 @@ import com.example.demo.dto.DepenseDTO;
 import com.example.demo.entity.BudgetDepartement;
 import com.example.demo.entity.Departement;
 import com.example.demo.entity.Depense;
+import com.example.demo.entity.Utilisateur;
 import com.example.demo.repository.BudgetDepartementRepository;
 import com.example.demo.repository.DepartementRepository;
 import com.example.demo.repository.DepenseRepository;
+import com.example.demo.repository.UtilisateurRepository;
 import com.example.demo.service.DepenseService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -27,6 +29,9 @@ public class DepenseServiceImpl implements DepenseService {
     @Autowired
     private BudgetDepartementRepository budgetDepartementRepository;
 
+    @Autowired
+    private UtilisateurRepository utilisateurRepository;
+
     private DepenseDTO toDTO(Depense d) {
         DepenseDTO dto = new DepenseDTO();
         dto.setId(d.getId());
@@ -36,6 +41,7 @@ public class DepenseServiceImpl implements DepenseService {
         dto.setDate(d.getDate());
         dto.setMontant(d.getMontant());
         if (d.getDepartement() != null) dto.setDepartementId(d.getDepartement().getId());
+        dto.setStatus(d.getStatus());
         return dto;
     }
 
@@ -47,7 +53,7 @@ public class DepenseServiceImpl implements DepenseService {
         d.setType(dto.getType());
         d.setDate(dto.getDate());
         d.setMontant(dto.getMontant());
-        
+        d.setStatus(dto.getStatus());
         // Set department if departementId is provided
         if (dto.getDepartementId() != null) {
             Optional<Departement> departementOpt = departementRepository.findById(dto.getDepartementId());
@@ -55,7 +61,6 @@ public class DepenseServiceImpl implements DepenseService {
                 d.setDepartement(departementOpt.get());
             }
         }
-        
         return d;
     }
 
@@ -75,7 +80,7 @@ public class DepenseServiceImpl implements DepenseService {
         if (!validateBudgetConstraints(depenseDTO)) {
             throw new RuntimeException("Le montant total des dépenses dépasse le budget du département pour cette année");
         }
-        
+        depenseDTO.setStatus("EN_ATTENTE"); // Always set to EN_ATTENTE on creation
         Depense d = toEntity(depenseDTO);
         return toDTO(depenseRepository.save(d));
     }
@@ -123,6 +128,80 @@ public class DepenseServiceImpl implements DepenseService {
         
         // Return remaining budget
         return budgetDept.getMontant() - totalExpenses;
+    }
+    
+    @Override
+    public DepenseDTO validateDepense(Integer id) {
+        Depense depense = depenseRepository.findById(id).orElseThrow(() -> new RuntimeException("Dépense non trouvée"));
+        depense.setStatus("VALID");
+        return toDTO(depenseRepository.save(depense));
+    }
+
+    @Override
+    public DepenseDTO invalidateDepense(Integer id) {
+        Depense depense = depenseRepository.findById(id).orElseThrow(() -> new RuntimeException("Dépense non trouvée"));
+        depense.setStatus("INVALID");
+        return toDTO(depenseRepository.save(depense));
+    }
+
+    @Override
+    public List<DepenseDTO> findByStatus(String status) {
+        return depenseRepository.findByStatus(status).stream().map(this::toDTO).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<DepenseDTO> findByDepartementAndStatus(Integer departementId, String status) {
+        Departement departement = departementRepository.findById(departementId).orElseThrow(() -> new RuntimeException("Département non trouvé"));
+        return depenseRepository.findByDepartementAndStatus(departement, status).stream().map(this::toDTO).collect(Collectors.toList());
+    }
+    
+    @Override
+    public List<DepenseDTO> findAllFiltered(Integer departementId, Integer annee, String status) {
+        List<Depense> depenses;
+        if (departementId == null && annee == null && (status == null || status.isEmpty())) {
+            depenses = depenseRepository.findAll();
+        } else if (departementId != null && annee == null && (status == null || status.isEmpty())) {
+            Departement departement = departementRepository.findById(departementId).orElseThrow(() -> new RuntimeException("Département non trouvé"));
+            depenses = depenseRepository.findByDepartementOrderByDateDesc(departement);
+        } else if (departementId != null && annee != null && (status == null || status.isEmpty())) {
+            Departement departement = departementRepository.findById(departementId).orElseThrow(() -> new RuntimeException("Département non trouvé"));
+            depenses = depenseRepository.findByDepartementAndDateBetween(
+                departement,
+                java.time.LocalDate.of(annee, 1, 1),
+                java.time.LocalDate.of(annee, 12, 31)
+            );
+        } else if (departementId != null && annee != null && status != null && !status.isEmpty()) {
+            Departement departement = departementRepository.findById(departementId).orElseThrow(() -> new RuntimeException("Département non trouvé"));
+            depenses = depenseRepository.findByDepartementAndStatus(departement, status);
+            depenses = depenses.stream().filter(d -> d.getDate() != null && d.getDate().getYear() == annee).collect(java.util.stream.Collectors.toList());
+        } else if (departementId != null && status != null && !status.isEmpty()) {
+            Departement departement = departementRepository.findById(departementId).orElseThrow(() -> new RuntimeException("Département non trouvé"));
+            depenses = depenseRepository.findByDepartementAndStatus(departement, status);
+        } else if (status != null && !status.isEmpty()) {
+            depenses = depenseRepository.findByStatus(status);
+        } else if (annee != null) {
+            depenses = depenseRepository.findAll().stream().filter(d -> d.getDate() != null && d.getDate().getYear() == annee).collect(java.util.stream.Collectors.toList());
+        } else {
+            depenses = depenseRepository.findAll();
+        }
+        return depenses.stream().map(this::toDTO).collect(java.util.stream.Collectors.toList());
+    }
+    
+    @Override
+    public List<DepenseDTO> findForCurrentUserDepartement(String email, Integer annee, String status) {
+        Utilisateur user = utilisateurRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+        Departement departement = user.getDepartement();
+        if (departement == null) throw new RuntimeException("Aucun département associé à cet utilisateur");
+        int year = (annee != null) ? annee : java.time.LocalDate.now().getYear();
+        List<Depense> depenses;
+        if (status != null && !status.isEmpty()) {
+            depenses = depenseRepository.findByDepartementAndStatus(departement, status)
+                .stream().filter(d -> d.getDate() != null && d.getDate().getYear() == year).collect(java.util.stream.Collectors.toList());
+        } else {
+            depenses = depenseRepository.findByDepartementOrderByDateDesc(departement)
+                .stream().filter(d -> d.getDate() != null && d.getDate().getYear() == year).collect(java.util.stream.Collectors.toList());
+        }
+        return depenses.stream().map(this::toDTO).collect(java.util.stream.Collectors.toList());
     }
     
     private boolean validateBudgetConstraints(DepenseDTO dto) {

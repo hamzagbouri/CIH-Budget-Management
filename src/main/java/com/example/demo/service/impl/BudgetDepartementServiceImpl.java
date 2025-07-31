@@ -4,9 +4,11 @@ import com.example.demo.dto.BudgetDepartementDTO;
 import com.example.demo.entity.Budget;
 import com.example.demo.entity.BudgetDepartement;
 import com.example.demo.entity.Departement;
+import com.example.demo.entity.Depense;
 import com.example.demo.repository.BudgetDepartementRepository;
 import com.example.demo.repository.BudgetRepository;
 import com.example.demo.repository.DepartementRepository;
+import com.example.demo.repository.DepenseRepository;
 import com.example.demo.service.BudgetDepartementService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -25,6 +27,9 @@ public class BudgetDepartementServiceImpl implements BudgetDepartementService {
     
     @Autowired
     private DepartementRepository departementRepository;
+
+    @Autowired
+    private DepenseRepository depenseRepository;
 
     private BudgetDepartementDTO toDTO(BudgetDepartement bd) {
         BudgetDepartementDTO dto = new BudgetDepartementDTO();
@@ -140,5 +145,53 @@ public class BudgetDepartementServiceImpl implements BudgetDepartementService {
         return budgetDepartementRepository.findByDepartementIdAndAnnee(departementId, annee)
                 .map(this::toDTO)
                 .orElse(null);
+    }
+
+    @Override
+    public List<BudgetDepartementDTO> getAllBudgetsSummary(Integer annee) {
+        List<BudgetDepartement> budgets;
+        if (annee != null) {
+            budgets = budgetDepartementRepository.findByAnnee(annee);
+        } else {
+            budgets = budgetDepartementRepository.findAll();
+        }
+        return budgets.stream().map(bd -> {
+            BudgetDepartementDTO dto = toDTO(bd);
+            Float total = bd.getMontant();
+            final int budgetYear = bd.getAnnee();
+            Float used = depenseRepository.findByDepartementAndStatus(bd.getDepartement(), "VALID")
+                .stream()
+                .filter(d -> annee == null || (d.getDate() != null && d.getDate().getYear() == budgetYear))
+                .map(Depense -> Depense.getMontant() == null ? 0f : Depense.getMontant())
+                .reduce(0f, Float::sum);
+            dto.setTotalBudget(total);
+            dto.setUsedBudget(used);
+            dto.setRemainingBudget(total - used);
+            return dto;
+        }).collect(java.util.stream.Collectors.toList());
+    }
+
+    @Override
+    public BudgetDepartementDTO getDepartementBudgetSummary(Integer departementId, Integer annee) {
+        BudgetDepartement bd = null;
+        if (annee != null) {
+            bd = budgetDepartementRepository.findByDepartementIdAndAnnee(departementId, annee).orElse(null);
+        } else {
+            List<BudgetDepartement> list = budgetDepartementRepository.findByDepartementId(departementId);
+            if (!list.isEmpty()) bd = list.get(0);
+        }
+        if (bd == null) return null;
+        BudgetDepartementDTO dto = toDTO(bd);
+        Float total = bd.getMontant();
+        final int budgetYear = bd.getAnnee();
+        Float used = depenseRepository.findByDepartementAndStatus(bd.getDepartement(), "VALID")
+            .stream()
+            .filter(d -> annee == null || (d.getDate() != null && d.getDate().getYear() == budgetYear))
+            .map(Depense -> Depense.getMontant() == null ? 0f : Depense.getMontant())
+            .reduce(0f, Float::sum);
+        dto.setTotalBudget(total);
+        dto.setUsedBudget(used);
+        dto.setRemainingBudget(total - used);
+        return dto;
     }
 } 

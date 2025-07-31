@@ -10,4 +10,11 @@ public interface DepenseService {
     DepenseDTO update(Integer id, DepenseDTO depenseDTO);
     void delete(Integer id);
     Float getRemainingBudget(Integer departementId, Integer year);
+    // New methods
+    DepenseDTO validateDepense(Integer id);
+    DepenseDTO invalidateDepense(Integer id);
+    List<DepenseDTO> findByStatus(String status);
+    List<DepenseDTO> findByDepartementAndStatus(Integer departementId, String status);
+    List<DepenseDTO> findAllFiltered(Integer departementId, Integer annee, String status);
+    List<DepenseDTO> findForCurrentUserDepartement(String email, Integer annee, String status);
 } 

@@ -10,4 +10,6 @@ import java.util.List;
 public interface DepenseRepository extends JpaRepository<Depense, Integer> {
     List<Depense> findByDepartementOrderByDateDesc(Departement departement);
     List<Depense> findByDepartementAndDateBetween(Departement departement, LocalDate startDate, LocalDate endDate);
+    List<Depense> findByStatus(String status);
+    List<Depense> findByDepartementAndStatus(Departement departement, String status);
 } 

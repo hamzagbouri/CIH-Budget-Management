@@ -12,4 +12,6 @@ public interface BudgetDepartementService {
     List<BudgetDepartementDTO> findByAnnee(Integer annee);
     List<BudgetDepartementDTO> findByDepartement(Integer departementId);
     BudgetDepartementDTO findByDepartementAndYear(Integer departementId, Integer annee);
+    List<BudgetDepartementDTO> getAllBudgetsSummary(Integer annee);
+    BudgetDepartementDTO getDepartementBudgetSummary(Integer departementId, Integer annee);
 } 

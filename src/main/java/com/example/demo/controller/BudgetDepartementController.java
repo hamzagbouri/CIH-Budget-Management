@@ -44,4 +44,16 @@ public class BudgetDepartementController {
     public void delete(@PathVariable Integer id) {
         budgetDepartementService.delete(id);
     }
+
+    @GetMapping("/summary")
+    @Operation(summary = "Liste tous les départements avec leur budget total et restant pour une année donnée")
+    public List<BudgetDepartementDTO> getAllBudgetsSummary(@RequestParam(value = "annee", required = false) Integer annee) {
+        return budgetDepartementService.getAllBudgetsSummary(annee);
+    }
+
+    @GetMapping("/departement/{departementId}/summary")
+    @Operation(summary = "Récupère le budget total et restant pour un département pour une année donnée")
+    public BudgetDepartementDTO getDepartementBudgetSummary(@PathVariable Integer departementId, @RequestParam(value = "annee", required = false) Integer annee) {
+        return budgetDepartementService.getDepartementBudgetSummary(departementId, annee);
+    }
 } 
