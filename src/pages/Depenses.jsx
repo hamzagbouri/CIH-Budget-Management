@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { expenseService, departmentService, budgetDepartmentService } from '../services';
+import { userExpenseService, userAnalyticsService } from '../services';
 import Sidebar from '../components/Sidebar';
 import Modal from '../components/Modal';
 import FormInput from '../components/FormInput';
@@ -32,7 +32,7 @@ export default function Depenses() {
   
   const [filters, setFilters] = useState({
     type: '',
-    departementId: '',
+    prestataire: '',
     dateFrom: '',
     dateTo: ''
   });
@@ -44,7 +44,7 @@ export default function Depenses() {
     type: '',
     date: '',
     montant: '',
-    departementId: ''
+    prestataire: ''
   });
 
   const [errors, setErrors] = useState({});
@@ -56,19 +56,22 @@ export default function Depenses() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [expensesData, departmentsData, budgetDepartmentsData] = await Promise.all([
-        expenseService.getAllExpenses(),
-        departmentService.getAllDepartments(),
-        budgetDepartmentService.getAllBudgetDepartments()
+      const [expensesData, analyticsData] = await Promise.all([
+        userExpenseService.getUserExpenses(new Date().getFullYear()),
+        userAnalyticsService.getUserAnalytics(new Date().getFullYear())
       ]);
       
       setExpenses(expensesData);
-      setDepartments(departmentsData);
-      setBudgetDepartments(budgetDepartmentsData);
       
-      // Calculate budget info for user's department
-      if (user?.departementId) {
-        await fetchBudgetInfo(user.departementId);
+      // Set budget info from analytics
+      if (analyticsData) {
+        setBudgetInfo({
+          totalBudget: analyticsData.budgetTotal,
+          usedAmount: analyticsData.budgetUtilise,
+          remainingAmount: analyticsData.budgetRestant,
+          year: analyticsData.annee
+        });
+        setRemainingBudget(analyticsData.budgetRestant);
       }
     } catch (err) {
       setError(err.message || 'Erreur lors du chargement des données');
@@ -189,26 +192,24 @@ export default function Depenses() {
         type: expenseForm.type,
         date: expenseForm.date,
         montant: amount,
-        departementId: Number(expenseForm.departementId)
+        prestataire: expenseForm.prestataire || ''
       };
 
       if (selectedExpense) {
         // Update existing expense
-        const updatedExpense = await expenseService.updateExpense(selectedExpense.id, expenseData);
+        const updatedExpense = await userExpenseService.updateExpense(selectedExpense.id, expenseData);
         setExpenses(prev => prev.map(exp => exp.id === selectedExpense.id ? updatedExpense : exp));
         setShowEditModal(false);
         addAlert('success', 'Dépense mise à jour', 'La dépense a été modifiée avec succès');
       } else {
         // Create new expense
-        const newExpense = await expenseService.createExpense(expenseData);
+        const newExpense = await userExpenseService.createExpense(expenseData);
         setExpenses(prev => [newExpense, ...prev]);
         setShowAddModal(false);
         addAlert('success', 'Dépense créée', 'La nouvelle dépense a été ajoutée avec succès');
         
-        // Update budget info
-        if (user?.departementId) {
-          await fetchBudgetInfo(user.departementId);
-        }
+        // Refresh data to update budget info
+        await fetchData();
       }
 
       resetForm();
@@ -223,16 +224,14 @@ export default function Depenses() {
     if (!selectedExpense) return;
 
     try {
-      await expenseService.deleteExpense(selectedExpense.id);
+      await userExpenseService.deleteExpense(selectedExpense.id);
       setExpenses(prev => prev.filter(exp => exp.id !== selectedExpense.id));
       setShowDeleteModal(false);
       setSelectedExpense(null);
       addAlert('success', 'Dépense supprimée', 'La dépense a été supprimée avec succès');
       
-      // Update budget info
-      if (user?.departementId) {
-        await fetchBudgetInfo(user.departementId);
-      }
+      // Refresh data to update budget info
+      await fetchData();
     } catch (err) {
       addAlert('error', 'Erreur', err.message || 'Erreur lors de la suppression');
     }
@@ -254,9 +253,6 @@ export default function Depenses() {
     }
     if (!expenseForm.montant || Number(expenseForm.montant) <= 0) {
       errs.montant = 'Montant invalide';
-    }
-    if (!expenseForm.departementId) {
-      errs.departementId = 'Département requis';
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -290,7 +286,7 @@ export default function Depenses() {
       type: '',
       date: '',
       montant: '',
-      departementId: ''
+      prestataire: ''
     });
     setErrors({});
     setSelectedExpense(null);
@@ -304,7 +300,7 @@ export default function Depenses() {
       type: expense.type,
       date: expense.date,
       montant: expense.montant.toString(),
-      departementId: expense.departementId.toString()
+      prestataire: expense.prestataire || ''
     });
     setShowEditModal(true);
   };
@@ -323,7 +319,6 @@ export default function Depenses() {
     resetForm();
     setExpenseForm(prev => ({
       ...prev,
-      departementId: user?.departementId?.toString() || '',
       date: new Date().toISOString().split('T')[0]
     }));
     setShowAddModal(true);
@@ -332,7 +327,7 @@ export default function Depenses() {
   // Filter expenses
   const filteredExpenses = expenses.filter(expense => {
     if (filters.type && expense.type !== filters.type) return false;
-    if (filters.departementId && expense.departementId !== Number(filters.departementId)) return false;
+    if (filters.prestataire && expense.prestataire && !expense.prestataire.toLowerCase().includes(filters.prestataire.toLowerCase())) return false;
     if (filters.dateFrom && expense.date < filters.dateFrom) return false;
     if (filters.dateTo && expense.date > filters.dateTo) return false;
     return true;
@@ -413,9 +408,9 @@ export default function Depenses() {
       render: (value) => formatDate(value)
     },
     {
-      key: 'departementId',
-      label: 'Département',
-      render: (value) => getDepartmentName(value)
+      key: 'prestataire',
+      label: 'Prestataire',
+      render: (value) => value || '-'
     },
     {
       key: 'actions',
@@ -616,15 +611,12 @@ export default function Depenses() {
                 ]}
               />
               
-              <SelectInput
-                label="Département"
-                name="departementId"
-                value={filters.departementId}
-                onChange={(e) => setFilters(prev => ({ ...prev, departementId: e.target.value }))}
-                options={[
-                  { value: '', label: 'Tous les départements' },
-                  ...departments.map(d => ({ value: d.id, label: d.nom }))
-                ]}
+              <FormInput
+                label="Prestataire"
+                name="prestataire"
+                value={filters.prestataire}
+                onChange={(e) => setFilters(prev => ({ ...prev, prestataire: e.target.value }))}
+                placeholder="Rechercher par prestataire"
               />
 
               <FormInput
@@ -646,7 +638,7 @@ export default function Depenses() {
 
             <div className="flex gap-3">
               <button
-                onClick={() => setFilters({ type: '', departementId: '', dateFrom: '', dateTo: '' })}
+                onClick={() => setFilters({ type: '', prestataire: '', dateFrom: '', dateTo: '' })}
                 className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
               >
                 Réinitialiser
@@ -766,17 +758,13 @@ export default function Depenses() {
               step="100"
             />
 
-            <SelectInput
-              label="Département"
-              name="departementId"
-              value={expenseForm.departementId}
+            <FormInput
+              label="Prestataire (optionnel)"
+              name="prestataire"
+              value={expenseForm.prestataire}
               onChange={handleChange}
-              options={[
-                { value: '', label: 'Sélectionner un département' },
-                ...departments.map(d => ({ value: d.id, label: d.nom }))
-              ]}
-              required
-              error={errors.departementId}
+              error={errors.prestataire}
+              placeholder="Nom du prestataire"
             />
 
             <div className="flex justify-end space-x-3 pt-4">

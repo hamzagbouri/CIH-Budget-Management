@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { dashboardService } from '../services';
+import { userDashboardService } from '../services';
 import Sidebar from '../components/Sidebar';
 import StatCard from '../components/StatCard';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -21,14 +21,12 @@ export default function Dashboard() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const data = await dashboardService.getDepartementDashboard();
+      const data = await userDashboardService.getUserDashboard(new Date().getFullYear());
       setDashboardData(data);
       
       // Add budget alerts
-      if (data.budget) {
-        const percentage = data.budget.montant > 0 
-          ? (data.totalDepenses / data.budget.montant) * 100 
-          : 0;
+      if (data.budgetTotal && data.budgetTotal > 0) {
+        const percentage = data.pourcentageUtilisation || 0;
         
         if (percentage >= 90) {
           addAlert('warning', 'Budget presque épuisé', 
@@ -92,10 +90,8 @@ export default function Dashboard() {
   };
 
   const getBudgetUsagePercentage = () => {
-    if (!dashboardData || !dashboardData.budget) return 0;
-    return dashboardData.budget.montant > 0 
-      ? (dashboardData.totalDepenses / dashboardData.budget.montant) * 100 
-      : 0;
+    if (!dashboardData || !dashboardData.budgetTotal) return 0;
+    return dashboardData.pourcentageUtilisation || 0;
   };
 
   const getBudgetStatusColor = (percentage) => {
@@ -174,13 +170,13 @@ export default function Dashboard() {
         </div>
 
         {/* Budget Overview */}
-        {dashboardData.budget && (
+        {dashboardData.budgetTotal && (
           <div className="mb-8">
             <BudgetInfo
-              totalBudget={dashboardData.budget.montant}
-              usedAmount={dashboardData.totalDepenses}
+              totalBudget={dashboardData.budgetTotal}
+              usedAmount={dashboardData.budgetUtilise}
               remainingAmount={dashboardData.budgetRestant}
-              title={`Budget ${dashboardData.budget.annee} - ${dashboardData.departementNom}`}
+              title={`Budget ${dashboardData.annee} - ${dashboardData.departementNom}`}
               size="lg"
             />
           </div>
@@ -190,17 +186,17 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard
             title="Budget Total"
-            value={formatCurrency(dashboardData.budget?.montant || 0)}
+            value={formatCurrency(dashboardData.budgetTotal || 0)}
             icon="account_balance_wallet"
             color="blue"
-            subtitle={`Année ${dashboardData.budget?.annee || new Date().getFullYear()}`}
+            subtitle={`Année ${dashboardData.annee || new Date().getFullYear()}`}
           />
           <StatCard
-            title="Dépenses Totales"
-            value={formatCurrency(dashboardData.totalDepenses || 0)}
+            title="Budget Utilisé"
+            value={formatCurrency(dashboardData.budgetUtilise || 0)}
             icon="trending_up"
             color="orange"
-            subtitle="Montant dépensé"
+            subtitle="Montant utilisé"
           />
           <StatCard
             title="Budget Restant"
@@ -310,7 +306,7 @@ export default function Dashboard() {
         </div>
 
         {/* Budget Tips */}
-        {dashboardData.budgetRestant > 0 && dashboardData.budgetRestant < (dashboardData.budget?.montant || 0) * 0.1 && (
+        {dashboardData.budgetRestant > 0 && dashboardData.budgetRestant < (dashboardData.budgetTotal || 0) * 0.1 && (
           <div className="mt-8">
             <Alert
               type="info"

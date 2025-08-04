@@ -7,7 +7,7 @@ const navItems = [
   { label: 'Tableau de bord', icon: 'dashboard', route: '/dashboard' },
   { label: 'Dépenses', icon: 'account_balance_wallet', route: '/depenses' },
   { label: 'Historique', icon: 'history', route: '/historique' },
-  { label: 'Mon profil', icon: 'person', route: '/profil' },
+  { label: 'Mon profil', icon: 'person', route: '/profile' },
 ];
 
 export default function Sidebar() {

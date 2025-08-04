@@ -12,6 +12,7 @@ import AdminValidationDepenses from './pages/AdminValidationDepenses';
 import AdminStats from './pages/AdminStats';
 import AdminBudgets from './pages/AdminBudgets';
 import AdminDashboard from './pages/AdminDashboard';
+import UserProfile from './pages/UserProfile';
 import { AuthProvider } from './context/AuthContext';
 import { RoleProvider } from './context/RoleContext';
 import { NotificationProvider } from './components/NotificationSystem';
@@ -47,11 +48,16 @@ function App() {
                 <Historique />
               </ProtectedRoute>
             } />
-            <Route path="/rapports" element={
-              <ProtectedRoute allowedRoles={['USER', 'MANAGER']}>
-                <Rapports />
-              </ProtectedRoute>
-            } />
+                         <Route path="/rapports" element={
+               <ProtectedRoute allowedRoles={['USER', 'MANAGER']}>
+                 <Rapports />
+               </ProtectedRoute>
+             } />
+             <Route path="/profile" element={
+               <ProtectedRoute allowedRoles={['USER', 'MANAGER']}>
+                 <UserProfile />
+               </ProtectedRoute>
+             } />
             
             {/* Admin routes */}
             <Route path="/admin/dashboard" element={

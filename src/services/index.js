@@ -8,4 +8,7 @@ export { notificationService } from './notificationService';
 export { dashboardService } from './dashboardService';
 export { adminDashboardService } from './adminDashboardService';
 export { adminBudgetService } from './adminBudgetService';
-export { adminExpenseService } from './adminExpenseService'; 
+export { adminExpenseService } from './adminExpenseService';
+export { userDashboardService } from './userDashboardService';
+export { userExpenseService } from './userExpenseService';
+export { userAnalyticsService } from './userAnalyticsService'; 
