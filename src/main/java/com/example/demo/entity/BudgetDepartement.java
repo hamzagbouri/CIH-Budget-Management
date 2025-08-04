@@ -24,6 +24,9 @@ public class BudgetDepartement {
     @Column(name = "montant", nullable = false)
     private Float montant;
     
+    @Column(name = "description", length = 500)
+    private String description;
+    
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "departement_id", nullable = false)
     @NotNull(message = "Le département est obligatoire")
@@ -52,6 +55,14 @@ public class BudgetDepartement {
 
     public void setMontant(Float montant) {
         this.montant = montant;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public Departement getDepartement() {

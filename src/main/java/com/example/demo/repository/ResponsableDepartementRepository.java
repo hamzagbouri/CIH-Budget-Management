@@ -35,4 +35,8 @@ public interface ResponsableDepartementRepository extends JpaRepository<Responsa
     
     @Query("SELECT rd FROM ResponsableDepartement rd WHERE rd.utilisateur.role = 'USER' AND rd.departement.id = :departementId")
     List<ResponsableDepartement> findAllByDepartementId(@Param("departementId") Integer departementId);
+    
+    // New method for admin functionality
+    @Query("SELECT rd FROM ResponsableDepartement rd WHERE rd.departement.id = :departementId AND rd.annee = :annee AND rd.actif = true")
+    ResponsableDepartement findByDepartementIdAndAnneeAndActifTrue(@Param("departementId") Integer departementId, @Param("annee") Integer annee);
 } 

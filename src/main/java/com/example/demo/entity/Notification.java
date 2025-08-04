@@ -15,5 +15,4 @@ public class Notification {
     private Utilisateur utilisateur;
 
     // Ajoute d'autres champs si besoin
-    // getters & setters
 } 

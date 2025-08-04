@@ -1,6 +1,7 @@
 package com.example.demo.service.impl;
 
 import com.example.demo.dto.BudgetDTO;
+import com.example.demo.dto.BudgetUpdateDTO;
 import com.example.demo.entity.Budget;
 import com.example.demo.entity.BudgetDepartement;
 import com.example.demo.repository.BudgetDepartementRepository;
@@ -26,6 +27,7 @@ public class BudgetServiceImpl implements BudgetService {
         dto.setId(b.getId());
         dto.setAnnee(b.getAnnee());
         dto.setMontant(b.getMontant());
+        dto.setDescription(b.getDescription());
         return dto;
     }
 
@@ -34,6 +36,7 @@ public class BudgetServiceImpl implements BudgetService {
         b.setId(dto.getId());
         b.setAnnee(dto.getAnnee());
         b.setMontant(dto.getMontant());
+        b.setDescription(dto.getDescription());
         return b;
     }
 
@@ -59,6 +62,21 @@ public class BudgetServiceImpl implements BudgetService {
         b.setId(id);
         return toDTO(budgetRepository.save(b));
     }
+    
+    @Override
+    public BudgetDTO update(Integer id, BudgetUpdateDTO budgetUpdateDTO) {
+        if (budgetUpdateDTO.getDescription() == null || budgetUpdateDTO.getDescription().trim().isEmpty()) {
+            throw new RuntimeException("La raison de modification est obligatoire");
+        }
+        
+        Budget budget = budgetRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Budget non trouvé"));
+        
+        budget.setMontant(budgetUpdateDTO.getMontant());
+        budget.setDescription(budgetUpdateDTO.getDescription());
+        
+        return toDTO(budgetRepository.save(budget));
+    }
 
     @Override
     public void delete(Integer id) {
@@ -67,7 +85,8 @@ public class BudgetServiceImpl implements BudgetService {
     
     @Override
     public BudgetDTO findByAnnee(Integer annee) {
-        return budgetRepository.findByAnnee(annee).map(this::toDTO).orElse(null);
+        Budget budget = budgetRepository.findByAnnee(annee).orElse(null);
+        return budget != null ? toDTO(budget) : null;
     }
     
     @Override
