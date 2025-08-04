@@ -5,4 +5,7 @@ export { departmentService } from './departmentService';
 export { budgetService } from './budgetService';
 export { budgetDepartmentService } from './budgetDepartmentService';
 export { notificationService } from './notificationService';
-export { dashboardService } from './dashboardService'; 
+export { dashboardService } from './dashboardService';
+export { adminDashboardService } from './adminDashboardService';
+export { adminBudgetService } from './adminBudgetService';
+export { adminExpenseService } from './adminExpenseService'; 

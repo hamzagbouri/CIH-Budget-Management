@@ -2,14 +2,14 @@ export default function SelectInput({
   label, 
   value, 
   onChange, 
-  options, 
+  options = [], 
   required = false, 
   error,
   name,
-  placeholder = "Sélectionner..."
+  placeholder = "Sélectionner...",
+  children
 }) {
   return (
-    
     <div className="mb-3">
       <label className="block text-gray-700 font-medium mb-2">
         {label}
@@ -25,11 +25,11 @@ export default function SelectInput({
         }`}
       >
         <option value="">{placeholder}</option>
-        {options.map((opt) => (
+        {children || (Array.isArray(options) ? options.map((opt) => (
           <option key={opt.value || opt} value={opt.value || opt}>
             {opt.label || opt}
           </option>
-        ))}
+        )) : null)}
       </select>
       {error && <div className="text-red-500 text-sm mt-1">{error}</div>}
     </div>

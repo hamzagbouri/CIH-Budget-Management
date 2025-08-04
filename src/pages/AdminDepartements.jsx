@@ -7,79 +7,98 @@ import SelectInput from '../components/SelectInput';
 import StatCard from '../components/StatCard';
 import Alert from '../components/Alert';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { departmentService } from '../services/departmentService';
-import { userService } from '../services/userService';
-import { budgetDepartmentService } from '../services/budgetDepartmentService';
-import { budgetService } from '../services/budgetService';
-import { expenseService } from '../services/expenseService';
+import { useNotifications } from '../components/NotificationSystem';
+import { adminDashboardService, departmentService } from '../services';
 
 const columns = [
   { key: 'nom', label: 'Département', sortable: true },
-  { key: 'responsableName', label: 'Responsable', sortable: true },
   { 
-    key: 'budgetAnnuel', 
-    label: 'Budget Annuel (DH)', 
+    key: 'responsableNom', 
+    label: 'Responsable', 
     sortable: true,
-    render: (value) => value.toLocaleString() + ' DH'
+    render: (value) => value || 'Non assigné'
   },
   { 
-    key: 'depensesTotales', 
-    label: 'Dépenses (DH)', 
+    key: 'responsableEmail', 
+    label: 'Email', 
     sortable: true,
-    render: (value) => value.toLocaleString() + ' DH'
+    render: (value) => value || '-'
   },
   { 
-    key: 'resteBudget', 
-    label: 'Reste (DH)', 
+    key: 'budgetTotal', 
+    label: 'Budget Total (DH)', 
     sortable: true,
-    render: (value) => (
-      <span className={value < 0 ? 'text-red-600 font-semibold' : 'text-green-600 font-semibold'}>
-        {value.toLocaleString()} DH
-      </span>
-    )
+    render: (value) => (value || 0).toLocaleString() + ' DH'
   },
-  { key: 'nbUtilisateurs', label: 'Utilisateurs', sortable: true },
+  { 
+    key: 'budgetRestant', 
+    label: 'Budget Restant (DH)', 
+    sortable: true,
+    render: (value) => {
+      const amount = value || 0;
+      return (
+        <span className={amount < 0 ? 'text-red-600 font-semibold' : 'text-green-600 font-semibold'}>
+          {amount.toLocaleString()} DH
+        </span>
+      );
+    }
+  },
+  { 
+    key: 'pourcentageUtilisation', 
+    label: '% Utilisation', 
+    sortable: true,
+    render: (value) => {
+      const percentage = value || 0;
+      return (
+        <span className={`font-semibold ${
+          percentage >= 90 ? 'text-red-600' : 
+          percentage >= 75 ? 'text-yellow-600' : 'text-green-600'
+        }`}>
+          {percentage.toFixed(1)}%
+        </span>
+      );
+    }
+  },
 ];
 
 export default function AdminDepartements() {
   const [departements, setDepartements] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [budgets, setBudgets] = useState([]);
-  const [actualBudgets, setActualBudgets] = useState([]);
-  const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [showManagerModal, setShowManagerModal] = useState(false);
-  const [form, setForm] = useState({ nom: '' });
-  const [selectedDepartment, setSelectedDepartment] = useState(null);
-  const [selectedManager, setSelectedManager] = useState('');
+  const [form, setForm] = useState({ 
+    nom: '', 
+    email: '', 
+    matricule: '', 
+    departementId: '', 
+    annee: new Date().getFullYear() 
+  });
   const [editId, setEditId] = useState(null);
   const [errors, setErrors] = useState({});
   const [alert, setAlert] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterManager, setFilterManager] = useState('');
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const { success, error: showError } = useNotifications();
 
   // Fetch all data
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [departementsData, usersData, budgetDepartmentsData, budgetsData, expensesData] = await Promise.all([
-        departmentService.getAllDepartments(),
-        userService.getAllUsers(),
-        budgetDepartmentService.getAllBudgetDepartments(),
-        budgetService.getAllBudgets(),
-        expenseService.getAllExpenses()
-      ]);
+      const departementsData = await adminDashboardService.getDepartmentsWithResponsable(selectedYear);
       
-      setDepartements(departementsData);
-      setUsers(usersData);
-      setBudgets(budgetDepartmentsData);
-      setExpenses(expensesData);
+      // Enrich data with default values to prevent undefined errors
+      const enrichedData = departementsData.map(dept => ({
+        ...dept,
+        budgetTotal: dept.budgetTotal || 0,
+        budgetRestant: dept.budgetRestant || 0,
+        pourcentageUtilisation: dept.pourcentageUtilisation || 0,
+        responsableNom: dept.responsableNom || 'Non assigné',
+        responsableEmail: dept.responsableEmail || '',
+        responsableMatricule: dept.responsableMatricule || ''
+      }));
       
-      // Store actual budgets for amount calculations
-      setActualBudgets(budgetsData);
+      setDepartements(enrichedData);
     } catch (error) {
-      showAlert('Erreur lors du chargement des données', 'error');
+      showError('Erreur', error.message || 'Erreur lors du chargement des données');
     } finally {
       setLoading(false);
     }
@@ -87,49 +106,7 @@ export default function AdminDepartements() {
 
   useEffect(() => {
     fetchData();
-  }, []);
-
-  // Enrich departments with additional data
-  const enrichDepartements = (deps) => {
-    const currentYear = new Date().getFullYear();
-    
-    return deps.map(dep => {
-      // Get department budget for current year
-      const budgetDeptInfo = budgets.find(b => b.departementId === dep.id);
-      let budgetAnnuel = 0;
-      
-      if (budgetDeptInfo) {
-        // Find the actual budget amount for this budget ID
-        const actualBudget = actualBudgets.find(b => b.id === budgetDeptInfo.budgetId);
-        budgetAnnuel = actualBudget ? actualBudget.montant : 0;
-      }
-      
-      // Calculate total expenses for this department
-      const depensesTotales = expenses
-        .filter(e => e.departementId === dep.id)
-        .reduce((sum, e) => sum + Number(e.montant), 0);
-      
-      // Calculate remaining budget
-      const resteBudget = budgetAnnuel - depensesTotales;
-      
-      // Get department manager
-      const responsable = users.find(u => u.departementId === dep.id && u.role === 'responsable');
-      const responsableName = responsable ? responsable.nom : 'Non assigné';
-      
-      // Count users in department
-      const nbUtilisateurs = users.filter(u => u.departementId === dep.id).length;
-      
-      return {
-        ...dep,
-        budgetAnnuel,
-        depensesTotales,
-        resteBudget,
-        responsableName,
-        nbUtilisateurs,
-        responsableId: responsable?.id || null
-      };
-    });
-  };
+  }, [selectedYear]);
 
   const showAlert = (message, type = 'success') => {
     setAlert({ message, type });
@@ -137,41 +114,50 @@ export default function AdminDepartements() {
   };
 
   const handleEdit = (row) => {
-    setForm({ nom: row.nom });
     setEditId(row.id);
+    setForm({
+      nom: row.nom,
+      email: row.responsableEmail || '',
+      matricule: row.responsableMatricule || '',
+      departementId: row.id,
+      annee: selectedYear
+    });
     setShowModal(true);
   };
 
   const handleDelete = async (row) => {
-    if (window.confirm(`Êtes-vous sûr de vouloir supprimer le département "${row.nom}" ?`)) {
-      try {
-        await departmentService.deleteDepartment(row.id);
-        showAlert('Département supprimé avec succès');
-        fetchData();
-      } catch (error) {
-        showAlert(error.message || 'Erreur lors de la suppression', 'error');
-      }
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce département ?')) {
+      return;
     }
-  };
 
-  const handleAssignManager = (row) => {
-    setSelectedDepartment(row);
-    setSelectedManager(row.responsableId || '');
-    setShowManagerModal(true);
+    try {
+      await departmentService.deleteDepartment(row.id);
+      success('Succès', 'Département supprimé avec succès');
+      fetchData();
+    } catch (error) {
+      showError('Erreur', error.message || 'Erreur lors de la suppression');
+    }
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm(f => ({ ...f, [name]: value }));
+    setForm(prev => ({ ...prev, [name]: value }));
     if (errors[name]) {
-      setErrors(e => ({ ...e, [name]: '' }));
+      setErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
 
   const validate = () => {
     const errs = {};
-    if (!form.nom.trim()) errs.nom = 'Le nom du département est requis';
-    if (form.nom.trim().length < 2) errs.nom = 'Le nom doit contenir au moins 2 caractères';
+    if (!form.nom || form.nom.trim().length < 2) {
+      errs.nom = 'Nom du département requis (min 2 caractères)';
+    }
+    if (!form.email || !form.email.includes('@')) {
+      errs.email = 'Email valide requis';
+    }
+    if (!form.matricule || form.matricule.trim().length < 3) {
+      errs.matricule = 'Matricule requis (min 3 caractères)';
+    }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -179,80 +165,55 @@ export default function AdminDepartements() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
-    
+
     try {
+      const departmentData = {
+        nom: form.nom,
+        email: form.email,
+        matricule: form.matricule,
+        departementId: form.departementId,
+        annee: selectedYear
+      };
+
       if (editId) {
-        await departmentService.updateDepartment(editId, form);
-        showAlert('Département modifié avec succès');
+        // Update existing department
+        await departmentService.updateDepartment(editId, departmentData);
+        success('Succès', 'Département mis à jour avec succès');
       } else {
-        await departmentService.createDepartment(form);
-        showAlert('Département créé avec succès');
+        // Create new department with responsible
+        await adminDashboardService.addDepartmentWithResponsable(departmentData);
+        success('Succès', 'Département créé avec succès');
       }
+
       setShowModal(false);
-      setForm({ nom: '' });
+      setForm({ nom: '', email: '', matricule: '', departementId: '', annee: selectedYear });
       setEditId(null);
       setErrors({});
       fetchData();
     } catch (error) {
-      showAlert(error.message || 'Erreur lors de l\'opération', 'error');
-    }
-  };
-
-  const handleAssignManagerSubmit = async (e) => {
-    e.preventDefault();
-    if (!selectedManager) {
-      showAlert('Veuillez sélectionner un responsable', 'error');
-      return;
-    }
-
-    try {
-      // Update the selected user to be the department manager
-      const userToUpdate = users.find(u => u.id === parseInt(selectedManager));
-      if (userToUpdate) {
-        await userService.updateUser(userToUpdate.id, {
-          ...userToUpdate,
-          departementId: selectedDepartment.id,
-          role: 'responsable'
-        });
-        showAlert('Responsable assigné avec succès');
-        setShowManagerModal(false);
-        setSelectedDepartment(null);
-        setSelectedManager('');
-        fetchData();
-      }
-    } catch (error) {
-      showAlert(error.message || 'Erreur lors de l\'assignation', 'error');
+      showError('Erreur', error.message || 'Erreur lors de l\'enregistrement');
     }
   };
 
   const handleCloseModal = () => {
     setShowModal(false);
     setEditId(null);
-    setForm({ nom: '' });
+    setForm({ nom: '', email: '', matricule: '', departementId: '', annee: selectedYear });
     setErrors({});
   };
 
-  const handleCloseManagerModal = () => {
-    setShowManagerModal(false);
-    setSelectedDepartment(null);
-    setSelectedManager('');
-  };
+  // Filter departments based on search
+  const filteredDepartements = departements.filter(dep => 
+    dep.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (dep.responsableNom && dep.responsableNom.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (dep.responsableEmail && dep.responsableEmail.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
   // Calculate stats
-  const enrichedDepartements = enrichDepartements(departements);
-  
-  // Filter departments based on search and manager filter
-  const filteredDepartements = enrichedDepartements.filter(dep => {
-    const matchesSearch = dep.nom.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesManager = !filterManager || dep.responsableId === parseInt(filterManager);
-    return matchesSearch && matchesManager;
-  });
-  
-  const totalBudget = enrichedDepartements.reduce((sum, d) => sum + d.budgetAnnuel, 0);
-  const totalDepenses = enrichedDepartements.reduce((sum, d) => sum + d.depensesTotales, 0);
-  const totalReste = enrichedDepartements.reduce((sum, d) => sum + d.resteBudget, 0);
+  const totalBudget = departements.reduce((sum, d) => sum + (d.budgetTotal || 0), 0);
+  const totalRestant = departements.reduce((sum, d) => sum + (d.budgetRestant || 0), 0);
   const nbDepartements = departements.length;
-  const nbDepartementsAvecResponsable = enrichedDepartements.filter(d => d.responsableId).length;
+  const nbDepartementsAvecResponsable = departements.filter(d => d.responsableNom && d.responsableNom !== 'Non assigné').length;
 
   if (loading) {
     return (
@@ -273,13 +234,24 @@ export default function AdminDepartements() {
         
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-xl md:text-2xl font-bold">Gestion des Départements</h1>
-          <button
-            onClick={() => setShowModal(true)}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors flex items-center gap-2"
-          >
-            <span className="material-icons text-sm">add</span>
-            Nouveau Département
-          </button>
+          <div className="flex gap-4">
+            <select 
+              value={selectedYear} 
+              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+            <button
+              onClick={() => setShowModal(true)}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors flex items-center gap-2"
+            >
+              <span className="material-icons text-sm">add</span>
+              Nouveau Département
+            </button>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -291,74 +263,42 @@ export default function AdminDepartements() {
             color="bg-blue-100" 
           />
           <StatCard 
-            label="Total Dépenses" 
-            value={totalDepenses.toLocaleString() + ' DH'} 
-            icon="bar_chart" 
-            color="bg-orange-100" 
-          />
-          <StatCard 
-            label="Reste Total" 
-            value={totalReste.toLocaleString() + ' DH'} 
+            label="Budget Restant" 
+            value={totalRestant.toLocaleString() + ' DH'} 
             icon="savings" 
-            color={totalReste >= 0 ? "bg-green-100" : "bg-red-100"} 
+            color="bg-green-100" 
           />
           <StatCard 
             label="Départements" 
-            value={`${nbDepartementsAvecResponsable}/${nbDepartements}`} 
-            icon="business" 
+            value={nbDepartements.toString()} 
+            icon="apartment" 
             color="bg-purple-100" 
           />
+          <StatCard 
+            label="Avec Responsable" 
+            value={nbDepartementsAvecResponsable.toString()} 
+            icon="supervisor_account" 
+            color="bg-orange-100" 
+          />
+        </div>
+
+        {/* Search and Filters */}
+        <div className="bg-white rounded-2xl p-6 shadow-md mb-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <input
+                type="text"
+                placeholder="Rechercher par nom, responsable ou email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          </div>
         </div>
 
         {/* Departments Table */}
         <div className="bg-white rounded-2xl p-6 shadow-md">
-          {/* Search and Filter Controls */}
-          <div className="flex flex-col md:flex-row gap-4 mb-6">
-            <div className="flex-1">
-              <input
-                type="text"
-                placeholder="Rechercher un département..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <div className="md:w-64">
-              <select
-                value={filterManager}
-                onChange={(e) => setFilterManager(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Tous les responsables</option>
-                {users
-                  .filter(u => u.role === 'responsable')
-                  .map(user => (
-                    <option key={user.id} value={user.id}>
-                      {user.nom}
-                    </option>
-                  ))}
-              </select>
-            </div>
-          </div>
-          
-          {/* Results Summary */}
-          {(searchTerm || filterManager) && (
-            <div className="flex justify-between items-center mb-4 p-3 bg-blue-50 rounded-lg">
-              <span className="text-sm text-blue-700">
-                {filteredDepartements.length} département(s) trouvé(s) sur {enrichedDepartements.length}
-              </span>
-              <button
-                onClick={() => {
-                  setSearchTerm('');
-                  setFilterManager('');
-                }}
-                className="text-sm text-blue-600 hover:text-blue-800 underline"
-              >
-                Effacer les filtres
-              </button>
-            </div>
-          )}
-
           <Table
             columns={columns}
             data={filteredDepartements}
@@ -366,96 +306,50 @@ export default function AdminDepartements() {
             onDelete={handleDelete}
             enableSort
             enablePagination
-            customActions={(row) => (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleAssignManager(row)}
-                  className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm transition-colors"
-                  title="Assigner un responsable"
-                >
-                  <span className="material-icons text-sm">person_add</span>
-                </button>
-              </div>
-            )}
           />
         </div>
 
-        {/* Create/Edit Department Modal */}
-        <Modal 
-          open={showModal} 
-          onClose={handleCloseModal} 
-          title={editId ? 'Modifier le département' : 'Créer un nouveau département'}
-        >
-          <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-            <FormInput 
-              label="Nom du département" 
-              name="nom" 
-              value={form.nom} 
-              onChange={handleChange} 
-              required 
+        {/* Department Modal */}
+        <Modal open={showModal} onClose={handleCloseModal} title={editId ? 'Modifier Département' : 'Nouveau Département'}>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <FormInput
+              label="Nom du Département"
+              name="nom"
+              type="text"
+              value={form.nom}
+              onChange={handleChange}
               error={errors.nom}
-              placeholder="Ex: Ressources Humaines"
+              required
             />
-            
-            <div className="flex gap-3 mt-4">
-              <button 
-                type="submit" 
-                className="flex-1 py-2 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors"
+            <FormInput
+              label="Email du Responsable"
+              name="email"
+              type="email"
+              value={form.email}
+              onChange={handleChange}
+              error={errors.email}
+              required
+            />
+            <FormInput
+              label="Matricule du Responsable"
+              name="matricule"
+              type="text"
+              value={form.matricule}
+              onChange={handleChange}
+              error={errors.matricule}
+              required
+            />
+            <div className="flex gap-4 pt-4">
+              <button
+                type="submit"
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 {editId ? 'Modifier' : 'Créer'}
               </button>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={handleCloseModal}
-                className="flex-1 py-2 px-4 rounded-lg bg-gray-300 hover:bg-gray-400 text-gray-700 font-semibold transition-colors"
-              >
-                Annuler
-              </button>
-            </div>
-          </form>
-        </Modal>
-
-        {/* Assign Manager Modal */}
-        <Modal 
-          open={showManagerModal} 
-          onClose={handleCloseManagerModal} 
-          title={`Assigner un responsable - ${selectedDepartment?.nom}`}
-        >
-          <form className="flex flex-col gap-4" onSubmit={handleAssignManagerSubmit}>
-            <div className="mb-4">
-              <p className="text-sm text-gray-600 mb-2">
-                Sélectionnez un utilisateur pour le nommer responsable du département <strong>{selectedDepartment?.nom}</strong>
-              </p>
-            </div>
-            
-            <SelectInput 
-              label="Responsable" 
-              name="responsable" 
-              value={selectedManager} 
-              onChange={(e) => setSelectedManager(e.target.value)} 
-              options={[
-                { label: 'Sélectionner un responsable...', value: '' },
-                ...users
-                  .filter(u => u.role !== 'admin') // Exclude admins
-                  .map(u => ({ 
-                    label: `${u.nom} (${u.email})`, 
-                    value: u.id.toString() 
-                  }))
-              ]} 
-              required
-            />
-            
-            <div className="flex gap-3 mt-4">
-              <button 
-                type="submit" 
-                className="flex-1 py-2 px-4 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-semibold transition-colors"
-              >
-                Assigner
-              </button>
-              <button 
-                type="button" 
-                onClick={handleCloseManagerModal}
-                className="flex-1 py-2 px-4 rounded-lg bg-gray-300 hover:bg-gray-400 text-gray-700 font-semibold transition-colors"
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Annuler
               </button>

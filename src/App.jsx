@@ -11,8 +11,10 @@ import AdminResponsables from './pages/AdminResponsables';
 import AdminValidationDepenses from './pages/AdminValidationDepenses';
 import AdminStats from './pages/AdminStats';
 import AdminBudgets from './pages/AdminBudgets';
+import AdminDashboard from './pages/AdminDashboard';
 import { AuthProvider } from './context/AuthContext';
 import { RoleProvider } from './context/RoleContext';
+import { NotificationProvider } from './components/NotificationSystem';
 import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
 
@@ -21,7 +23,8 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <RoleProvider>
-          <Routes>
+          <NotificationProvider>
+            <Routes>
             {/* Public routes */}
             <Route path="/auth" element={<Auth />} />
             
@@ -51,6 +54,11 @@ function App() {
             } />
             
             {/* Admin routes */}
+            <Route path="/admin/dashboard" element={
+              <ProtectedRoute allowedRoles={['ADMIN']}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            } />
             <Route path="/budgets" element={
               <ProtectedRoute allowedRoles={['ADMIN']}>
                 <Budgets />
@@ -90,6 +98,7 @@ function App() {
             {/* Catch all route */}
             <Route path="*" element={<Navigate to="/auth" replace />} />
           </Routes>
+          </NotificationProvider>
         </RoleProvider>
       </BrowserRouter>
     </AuthProvider>

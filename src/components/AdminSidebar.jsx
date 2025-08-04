@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import cihLogo from '../assets/Cih.png';
 
 const links = [
+  { to: '/admin/dashboard', label: 'Tableau de Bord', icon: 'dashboard' },
   { to: '/admin/departements', label: 'Départements', icon: 'apartment' },
   { to: '/admin/responsables', label: 'Responsables', icon: 'supervisor_account' },
   { to: '/admin/budgets', label: 'Gestion Budgets', icon: 'account_balance_wallet' },

@@ -30,29 +30,23 @@ ChartJS.register(
   Title
 );
 
-export default function AdminStats() {
+export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState(null);
-  const [departmentsAnalytics, setDepartmentsAnalytics] = useState([]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const { success, error } = useNotifications();
+  const { error } = useNotifications();
 
   useEffect(() => {
-    fetchData();
+    fetchDashboardData();
   }, [selectedYear]);
 
-  const fetchData = async () => {
+  const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const [dashboard, analytics] = await Promise.all([
-        adminDashboardService.getAdminDashboard(selectedYear),
-        adminDashboardService.getDepartmentsAnalytics(selectedYear)
-      ]);
-      
-      setDashboardData(dashboard);
-      setDepartmentsAnalytics(analytics);
+      const data = await adminDashboardService.getAdminDashboard(selectedYear);
+      setDashboardData(data);
     } catch (err) {
-      error('Erreur', err.message || 'Erreur lors du chargement des données');
+      error('Erreur', err.message || 'Erreur lors du chargement du tableau de bord');
     } finally {
       setLoading(false);
     }
@@ -104,10 +98,10 @@ export default function AdminStats() {
   }
 
   // Prepare chart data
-  const departmentNames = departmentsAnalytics.map(d => d.departementNom || 'Département inconnu');
-  const departmentBudgets = departmentsAnalytics.map(d => d.budgetTotal || 0);
-  const departmentUsed = departmentsAnalytics.map(d => d.budgetUtilise || 0);
-  const departmentRemaining = departmentsAnalytics.map(d => d.budgetRestant || 0);
+  const departmentNames = dashboardData.departementsAnalytics.map(d => d.departementNom || 'Département inconnu');
+  const departmentBudgets = dashboardData.departementsAnalytics.map(d => d.budgetTotal || 0);
+  const departmentUsed = dashboardData.departementsAnalytics.map(d => d.budgetUtilise || 0);
+  const departmentRemaining = dashboardData.departementsAnalytics.map(d => d.budgetRestant || 0);
 
   const barChartData = {
     labels: departmentNames,
@@ -216,7 +210,7 @@ export default function AdminStats() {
       <AdminSidebar />
       <main className="flex-1 p-4 md:p-10">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-xl md:text-2xl font-bold">Statistiques Générales</h1>
+          <h1 className="text-xl md:text-2xl font-bold">Tableau de Bord Admin</h1>
           <select 
             value={selectedYear} 
             onChange={(e) => setSelectedYear(parseInt(e.target.value))}
@@ -305,9 +299,9 @@ export default function AdminStats() {
           </div>
         </div>
 
-        {/* Department Details Table */}
+        {/* Department Analytics Table */}
         <div className="bg-white rounded-2xl p-6 shadow-md">
-          <h2 className="text-lg font-semibold mb-4">Détails par Département</h2>
+          <h2 className="text-lg font-semibold mb-4">Analytics par Département</h2>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -318,20 +312,34 @@ export default function AdminStats() {
                   <th className="text-right py-3 px-4 font-semibold">Utilisé</th>
                   <th className="text-right py-3 px-4 font-semibold">Restant</th>
                   <th className="text-right py-3 px-4 font-semibold">% Utilisation</th>
+                  <th className="text-center py-3 px-4 font-semibold">Dépenses</th>
                 </tr>
               </thead>
               <tbody>
-                {departmentsAnalytics.map((dept, index) => {
+                {dashboardData.departementsAnalytics.map((dept, index) => {
                   const usagePercentage = getBudgetUsagePercentage(dept.budgetUtilise, dept.budgetTotal);
                   return (
                     <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-3 px-4 font-medium">{dept.departementNom}</td>
-                      <td className="py-3 px-4">{dept.responsableNom}</td>
-                      <td className="py-3 px-4 text-right font-medium">{formatCurrency(dept.budgetTotal)}</td>
-                      <td className="py-3 px-4 text-right">{formatCurrency(dept.budgetUtilise)}</td>
-                      <td className="py-3 px-4 text-right">{formatCurrency(dept.budgetRestant)}</td>
+                      <td className="py-3 px-4 font-medium">{dept.departementNom || 'Département inconnu'}</td>
+                      <td className="py-3 px-4">{dept.responsableNom || 'Non assigné'}</td>
+                      <td className="py-3 px-4 text-right font-medium">{formatCurrency(dept.budgetTotal || 0)}</td>
+                      <td className="py-3 px-4 text-right">{formatCurrency(dept.budgetUtilise || 0)}</td>
+                      <td className="py-3 px-4 text-right">{formatCurrency(dept.budgetRestant || 0)}</td>
                       <td className={`py-3 px-4 text-right font-semibold ${getStatusColor(usagePercentage)}`}>
                         {usagePercentage.toFixed(1)}%
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                            {dept.depensesValidees || 0} validées
+                          </span>
+                          <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                            {dept.depensesEnAttente || 0} en attente
+                          </span>
+                          <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">
+                            {dept.depensesRefusees || 0} refusées
+                          </span>
+                        </div>
                       </td>
                     </tr>
                   );
