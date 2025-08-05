@@ -231,20 +231,13 @@ export default function Dashboard() {
               <span className="material-icons">add</span>
               Nouvelle Dépense
             </button>
-            <button
-              onClick={() => window.location.href = '/historique'}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              <span className="material-icons">history</span>
-              Historique
-            </button>
-            <button
-              onClick={() => window.location.href = '/rapports'}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-            >
-              <span className="material-icons">assessment</span>
-              Rapports
-            </button>
+                         <button
+               onClick={() => window.location.href = '/rapports'}
+               className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+             >
+               <span className="material-icons">assessment</span>
+               Rapports
+             </button>
             <button
               onClick={fetchDashboardData}
               className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"

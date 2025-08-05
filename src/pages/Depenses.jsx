@@ -19,8 +19,7 @@ export default function Depenses() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expenses, setExpenses] = useState([]);
-  const [departments, setDepartments] = useState([]);
-  const [budgetDepartments, setBudgetDepartments] = useState([]);
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -30,12 +29,12 @@ export default function Depenses() {
   const [budgetInfo, setBudgetInfo] = useState(null);
   const [alerts, setAlerts] = useState([]);
   
-  const [filters, setFilters] = useState({
-    type: '',
-    prestataire: '',
-    dateFrom: '',
-    dateTo: ''
-  });
+     const [filters, setFilters] = useState({
+     type: '',
+     prestataire: '',
+     dateFrom: '',
+     dateTo: ''
+   });
 
   // Form state
   const [expenseForm, setExpenseForm] = useState({
@@ -80,31 +79,6 @@ export default function Depenses() {
     }
   };
 
-  const fetchBudgetInfo = async (departmentId) => {
-    try {
-      const currentYear = new Date().getFullYear();
-      const remaining = await expenseService.getRemainingBudget(departmentId, currentYear);
-      setRemainingBudget(remaining);
-      
-      // Get department budget
-      const deptBudget = budgetDepartments.find(bd => 
-        bd.departementId === departmentId && bd.annee === currentYear
-      );
-      
-      if (deptBudget) {
-        const usedAmount = deptBudget.montant - remaining;
-        setBudgetInfo({
-          totalBudget: deptBudget.montant,
-          usedAmount: usedAmount,
-          remainingAmount: remaining,
-          year: currentYear
-        });
-      }
-    } catch (err) {
-      console.error('Erreur lors de la récupération du budget:', err);
-    }
-  };
-
   const addAlert = (type, title, message, autoClose = true) => {
     const id = Date.now();
     const newAlert = { id, type, title, message };
@@ -140,33 +114,64 @@ export default function Depenses() {
 
   const getExpenseTypeColor = (type) => {
     const colors = {
-      'EQUIPEMENT': 'bg-blue-100 text-blue-800',
-      'FORMATION': 'bg-green-100 text-green-800',
-      'MAINTENANCE': 'bg-orange-100 text-orange-800',
-      'LOGISTIQUE': 'bg-purple-100 text-purple-800',
-      'AUTRE': 'bg-gray-100 text-gray-800'
+      'EQUIPEMENT': 'bg-blue-100 text-blue-800 border-blue-200',
+      'FORMATION': 'bg-green-100 text-green-800 border-green-200',
+      'MAINTENANCE': 'bg-orange-100 text-orange-800 border-orange-200',
+      'LOGISTIQUE': 'bg-purple-100 text-purple-800 border-purple-200',
+      'AUTRE': 'bg-gray-100 text-gray-800 border-gray-200'
     };
     return colors[type] || colors['AUTRE'];
   };
 
-  const getDepartmentName = (departmentId) => {
-    const department = departments.find(d => d.id === departmentId);
-    return department ? department.nom : 'Inconnu';
+  const getStatusColor = (status) => {
+    const colors = {
+      'EN_ATTENTE': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      'APPROUVEE': 'bg-green-100 text-green-800 border-green-200',
+      'REJETEE': 'bg-red-100 text-red-800 border-red-200',
+      'EN_COURS': 'bg-blue-100 text-blue-800 border-blue-200',
+      'TERMINEE': 'bg-gray-100 text-gray-800 border-gray-200'
+    };
+    return colors[status] || colors['EN_ATTENTE'];
   };
 
-  const validateBudget = (amount) => {
-    if (remainingBudget <= 0) {
-      return {
-        valid: false,
-        message: 'Budget épuisé pour cette année. Impossible d\'ajouter de nouvelles dépenses.'
-      };
-    }
-    
-    if (amount > remainingBudget) {
-      return {
-        valid: false,
-        message: `Montant trop élevé. Budget restant : ${formatCurrency(remainingBudget)}`
-      };
+  const getStatusLabel = (status) => {
+    const labels = {
+      'EN_ATTENTE': 'En Attente',
+      'APPROUVEE': 'Approuvée',
+      'REJETEE': 'Rejetée',
+      'EN_COURS': 'En Cours',
+      'TERMINEE': 'Terminée'
+    };
+    return labels[status] || 'En Attente';
+  };
+
+  const validateBudget = (amount, isEditing = false, originalAmount = 0) => {
+    // Si on modifie une dépense existante, on doit considérer l'ancien montant
+    if (isEditing) {
+      const difference = amount - originalAmount;
+      const availableBudget = remainingBudget + originalAmount; // On récupère l'ancien montant
+      
+      if (difference > remainingBudget) {
+        return {
+          valid: false,
+          message: `Montant trop élevé. Budget disponible pour cette modification : ${formatCurrency(remainingBudget)}`
+        };
+      }
+    } else {
+      // Pour une nouvelle dépense
+      if (remainingBudget <= 0) {
+        return {
+          valid: false,
+          message: 'Budget épuisé pour cette année. Impossible d\'ajouter de nouvelles dépenses.'
+        };
+      }
+      
+      if (amount > remainingBudget) {
+        return {
+          valid: false,
+          message: `Montant trop élevé. Budget restant : ${formatCurrency(remainingBudget)}`
+        };
+      }
     }
     
     return { valid: true };
@@ -177,7 +182,9 @@ export default function Depenses() {
     if (!validateForm()) return;
 
     const amount = Number(expenseForm.montant);
-    const budgetValidation = validateBudget(amount);
+    const isEditing = !!selectedExpense;
+    const originalAmount = selectedExpense ? selectedExpense.montant : 0;
+    const budgetValidation = validateBudget(amount, isEditing, originalAmount);
     
     if (!budgetValidation.valid) {
       addAlert('error', 'Budget insuffisant', budgetValidation.message);
@@ -186,14 +193,14 @@ export default function Depenses() {
 
     try {
       setSubmitting(true);
-      const expenseData = {
-        titre: expenseForm.titre,
-        description: expenseForm.description,
-        type: expenseForm.type,
-        date: expenseForm.date,
-        montant: amount,
-        prestataire: expenseForm.prestataire || ''
-      };
+             const expenseData = {
+         titre: expenseForm.titre,
+         description: expenseForm.description,
+         type: expenseForm.type,
+         date: expenseForm.date,
+         montant: amount,
+         prestataire: expenseForm.prestataire || ''
+       };
 
       if (selectedExpense) {
         // Update existing expense
@@ -270,40 +277,53 @@ export default function Depenses() {
     // Validate budget when amount changes
     if (name === 'montant' && value) {
       const amount = Number(value);
-      if (amount > remainingBudget) {
-        setErrors(prev => ({ 
-          ...prev, 
-          montant: `Montant maximum autorisé : ${formatCurrency(remainingBudget)}` 
-        }));
+      const isEditing = !!selectedExpense;
+      const originalAmount = selectedExpense ? selectedExpense.montant : 0;
+      
+      if (isEditing) {
+        const difference = amount - originalAmount;
+        if (difference > remainingBudget) {
+          setErrors(prev => ({ 
+            ...prev, 
+            montant: `Montant maximum autorisé pour cette modification : ${formatCurrency(remainingBudget)}` 
+          }));
+        }
+      } else {
+        if (amount > remainingBudget) {
+          setErrors(prev => ({ 
+            ...prev, 
+            montant: `Montant maximum autorisé : ${formatCurrency(remainingBudget)}` 
+          }));
+        }
       }
     }
   };
 
-  const resetForm = () => {
-    setExpenseForm({
-      titre: '',
-      description: '',
-      type: '',
-      date: '',
-      montant: '',
-      prestataire: ''
-    });
-    setErrors({});
-    setSelectedExpense(null);
-  };
+     const resetForm = () => {
+     setExpenseForm({
+       titre: '',
+       description: '',
+       type: '',
+       date: '',
+       montant: '',
+       prestataire: ''
+     });
+     setErrors({});
+     setSelectedExpense(null);
+   };
 
-  const openEditModal = (expense) => {
-    setSelectedExpense(expense);
-    setExpenseForm({
-      titre: expense.titre,
-      description: expense.description,
-      type: expense.type,
-      date: expense.date,
-      montant: expense.montant.toString(),
-      prestataire: expense.prestataire || ''
-    });
-    setShowEditModal(true);
-  };
+     const openEditModal = (expense) => {
+     setSelectedExpense(expense);
+     setExpenseForm({
+       titre: expense.titre,
+       description: expense.description,
+       type: expense.type,
+       date: expense.date,
+       montant: expense.montant.toString(),
+       prestataire: expense.prestataire || ''
+     });
+     setShowEditModal(true);
+   };
 
   const openDeleteModal = (expense) => {
     setSelectedExpense(expense);
@@ -324,19 +344,20 @@ export default function Depenses() {
     setShowAddModal(true);
   };
 
-  // Filter expenses
-  const filteredExpenses = expenses.filter(expense => {
-    if (filters.type && expense.type !== filters.type) return false;
-    if (filters.prestataire && expense.prestataire && !expense.prestataire.toLowerCase().includes(filters.prestataire.toLowerCase())) return false;
-    if (filters.dateFrom && expense.date < filters.dateFrom) return false;
-    if (filters.dateTo && expense.date > filters.dateTo) return false;
-    return true;
-  });
+     // Filter expenses
+   const filteredExpenses = expenses.filter(expense => {
+     if (filters.type && expense.type !== filters.type) return false;
+     if (filters.prestataire && expense.prestataire && !expense.prestataire.toLowerCase().includes(filters.prestataire.toLowerCase())) return false;
+     if (filters.dateFrom && expense.date < filters.dateFrom) return false;
+     if (filters.dateTo && expense.date > filters.dateTo) return false;
+     return true;
+   });
 
   // Chart data
   const getChartData = () => {
     const typeData = {};
     const monthlyData = {};
+    const statusData = {};
 
     filteredExpenses.forEach(expense => {
       // Type distribution
@@ -345,6 +366,9 @@ export default function Depenses() {
       // Monthly distribution
       const month = new Date(expense.date).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
       monthlyData[month] = (monthlyData[month] || 0) + expense.montant;
+
+      // Status distribution
+      statusData[expense.status] = (statusData[expense.status] || 0) + 1;
     });
 
     return {
@@ -368,6 +392,17 @@ export default function Depenses() {
           borderColor: '#2563EB',
           borderWidth: 1
         }]
+      },
+      statusData: {
+        labels: Object.keys(statusData).map(status => getStatusLabel(status)),
+        datasets: [{
+          data: Object.values(statusData),
+          backgroundColor: [
+            '#F59E0B', '#10B981', '#EF4444', '#3B82F6', '#6B7280'
+          ],
+          borderWidth: 2,
+          borderColor: '#fff'
+        }]
       }
     };
   };
@@ -378,55 +413,79 @@ export default function Depenses() {
   const columns = [
     {
       key: 'titre',
-      label: 'Titre',
+      label: 'Dépense',
       render: (value, row) => (
-        <div>
-          <div className="font-medium text-gray-900">{value}</div>
-          <div className="text-sm text-gray-500">{row.description}</div>
+        <div className="flex items-start space-x-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
+            <span className="material-icons text-white text-sm">receipt</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-gray-900 truncate">{value}</div>
+            <div className="text-sm text-gray-500 line-clamp-2">{row.description}</div>
+            <div className="flex items-center gap-2 mt-1">
+              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getExpenseTypeColor(row.type)}`}>
+                {row.type}
+              </span>
+              <span className="text-xs text-gray-400">
+                {formatDate(row.date)}
+              </span>
+            </div>
+          </div>
         </div>
-      )
-    },
-    {
-      key: 'type',
-      label: 'Type',
-      render: (value) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getExpenseTypeColor(value)}`}>
-          {value}
-        </span>
       )
     },
     {
       key: 'montant',
       label: 'Montant',
       render: (value) => (
-        <span className="font-semibold text-gray-900">{formatCurrency(value)}</span>
+        <div className="text-right">
+          <div className="font-bold text-lg text-gray-900">{formatCurrency(value)}</div>
+          <div className="text-xs text-gray-500">MAD</div>
+        </div>
       )
     },
     {
-      key: 'date',
-      label: 'Date',
-      render: (value) => formatDate(value)
+      key: 'status',
+      label: 'Statut',
+      render: (value) => (
+        <div className="flex items-center justify-center">
+          <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(value)}`}>
+            {getStatusLabel(value)}
+          </span>
+        </div>
+      )
     },
     {
       key: 'prestataire',
       label: 'Prestataire',
-      render: (value) => value || '-'
+      render: (value) => (
+        <div className="text-center">
+          {value ? (
+            <div className="flex items-center justify-center space-x-2">
+              <span className="material-icons text-gray-400 text-sm">business</span>
+              <span className="text-sm text-gray-700">{value}</span>
+            </div>
+          ) : (
+            <span className="text-gray-400 text-sm">-</span>
+          )}
+        </div>
+      )
     },
     {
       key: 'actions',
       label: 'Actions',
       render: (value, row) => (
-        <div className="flex space-x-2">
+        <div className="flex items-center justify-center space-x-1">
           <button
             onClick={() => openEditModal(row)}
-            className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 hover:scale-105"
             title="Modifier"
           >
             <span className="material-icons text-sm">edit</span>
           </button>
           <button
             onClick={() => openDeleteModal(row)}
-            className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-105"
             title="Supprimer"
           >
             <span className="material-icons text-sm">delete</span>
@@ -438,7 +497,7 @@ export default function Depenses() {
 
   if (loading) {
     return (
-      <div className="flex flex-col md:flex-row min-h-screen bg-[#e9eff2]">
+      <div className="flex flex-col md:flex-row min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
         <Sidebar />
         <main className="flex-1 p-10">
           <LoadingSpinner size="lg" text="Chargement des dépenses..." />
@@ -448,17 +507,36 @@ export default function Depenses() {
   }
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-[#e9eff2]">
+    <div className="flex flex-col md:flex-row min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <Sidebar />
-      <main className="flex-1 p-6 md:p-10">
+      <main className="flex-1 p-6 md:p-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">
-            Gestion des Dépenses
-          </h1>
-          <p className="text-gray-600">
-            Suivi et gestion des dépenses du département
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+                Gestion des Dépenses
+              </h1>
+              <p className="text-gray-600 text-lg">
+                Suivi et gestion des dépenses du département {user?.departementNom}
+              </p>
+            </div>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={openAddModal}
+                disabled={remainingBudget <= 0}
+                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
+                  remainingBudget <= 0 
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                    : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl transform hover:scale-105'
+                }`}
+                title={remainingBudget <= 0 ? 'Budget épuisé' : 'Ajouter une nouvelle dépense'}
+              >
+                <span className="material-icons">add</span>
+                Nouvelle Dépense
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Alerts */}
@@ -491,21 +569,21 @@ export default function Depenses() {
               totalBudget={budgetInfo.totalBudget}
               usedAmount={budgetInfo.usedAmount}
               remainingAmount={budgetInfo.remainingAmount}
-              title={`Budget ${budgetInfo.year} - ${getDepartmentName(user?.departementId)}`}
+              title={`Budget ${budgetInfo.year} - ${user?.departementNom || 'Département'}`}
               size="lg"
             />
           </div>
         )}
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300">
             <div className="flex items-center">
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                <span className="material-icons text-blue-600">receipt</span>
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                <span className="material-icons text-white">receipt</span>
               </div>
               <div className="ml-4">
-                <p className="text-sm text-gray-500">Total Dépenses</p>
+                <p className="text-sm text-gray-500 font-medium">Total Dépenses</p>
                 <p className="text-2xl font-bold text-gray-900">
                   {formatCurrency(filteredExpenses.reduce((sum, exp) => sum + exp.montant, 0))}
                 </p>
@@ -513,25 +591,25 @@ export default function Depenses() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
+          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300">
             <div className="flex items-center">
-              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                <span className="material-icons text-green-600">list</span>
+              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
+                <span className="material-icons text-white">list</span>
               </div>
               <div className="ml-4">
-                <p className="text-sm text-gray-500">Nombre</p>
+                <p className="text-sm text-gray-500 font-medium">Nombre</p>
                 <p className="text-2xl font-bold text-gray-900">{filteredExpenses.length}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
+          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300">
             <div className="flex items-center">
-              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                <span className="material-icons text-orange-600">trending_up</span>
+              <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center">
+                <span className="material-icons text-white">trending_up</span>
               </div>
               <div className="ml-4">
-                <p className="text-sm text-gray-500">Moyenne</p>
+                <p className="text-sm text-gray-500 font-medium">Moyenne</p>
                 <p className="text-2xl font-bold text-gray-900">
                   {filteredExpenses.length > 0 
                     ? formatCurrency(filteredExpenses.reduce((sum, exp) => sum + exp.montant, 0) / filteredExpenses.length)
@@ -542,13 +620,13 @@ export default function Depenses() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
+          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300">
             <div className="flex items-center">
-              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                <span className="material-icons text-purple-600">calendar_today</span>
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
+                <span className="material-icons text-white">calendar_today</span>
               </div>
               <div className="ml-4">
-                <p className="text-sm text-gray-500">Ce Mois</p>
+                <p className="text-sm text-gray-500 font-medium">Ce Mois</p>
                 <p className="text-2xl font-bold text-gray-900">
                   {formatCurrency(
                     filteredExpenses
@@ -566,15 +644,15 @@ export default function Depenses() {
         </div>
 
         {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Répartition par Type</h3>
             <div className="h-64">
               <Pie data={chartData.typeData} options={{ maintainAspectRatio: false }} />
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
+          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Évolution Mensuelle</h3>
             <div className="h-64">
               <Bar 
@@ -590,10 +668,17 @@ export default function Depenses() {
               />
             </div>
           </div>
+
+          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Statut des Dépenses</h3>
+            <div className="h-64">
+              <Pie data={chartData.statusData} options={{ maintainAspectRatio: false }} />
+            </div>
+          </div>
         </div>
 
-        {/* Filters and Actions */}
-        <div className="bg-white rounded-2xl p-6 mb-8 shadow-sm">
+        {/* Filters */}
+        <div className="bg-white rounded-2xl p-6 mb-8 shadow-lg border border-gray-100">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div className="flex flex-wrap gap-4">
               <SelectInput
@@ -610,6 +695,8 @@ export default function Depenses() {
                   { value: 'AUTRE', label: 'Autre' }
                 ]}
               />
+              
+              
               
               <FormInput
                 label="Prestataire"
@@ -637,31 +724,22 @@ export default function Depenses() {
             </div>
 
             <div className="flex gap-3">
-              <button
-                onClick={() => setFilters({ type: '', prestataire: '', dateFrom: '', dateTo: '' })}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-              >
+                             <button
+                 onClick={() => setFilters({ type: '', prestataire: '', dateFrom: '', dateTo: '' })}
+                 className="px-6 py-2 text-gray-600 hover:text-gray-800 transition-colors font-medium"
+               >
                 Réinitialiser
-              </button>
-              <button
-                onClick={openAddModal}
-                disabled={remainingBudget <= 0}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                  remainingBudget <= 0 
-                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
-                title={remainingBudget <= 0 ? 'Budget épuisé' : 'Ajouter une nouvelle dépense'}
-              >
-                <span className="material-icons">add</span>
-                Nouvelle Dépense
               </button>
             </div>
           </div>
         </div>
 
         {/* Expenses Table */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100">
+          <div className="p-6 border-b border-gray-100">
+            <h2 className="text-xl font-semibold text-gray-900">Liste des Dépenses</h2>
+            <p className="text-gray-600 mt-1">{filteredExpenses.length} dépense(s) trouvée(s)</p>
+          </div>
           <Table
             data={filteredExpenses}
             columns={columns}
@@ -865,17 +943,13 @@ export default function Depenses() {
               step="100"
             />
 
-            <SelectInput
-              label="Département"
-              name="departementId"
-              value={expenseForm.departementId}
+            <FormInput
+              label="Prestataire (optionnel)"
+              name="prestataire"
+              value={expenseForm.prestataire}
               onChange={handleChange}
-              options={[
-                { value: '', label: 'Sélectionner un département' },
-                ...departments.map(d => ({ value: d.id, label: d.nom }))
-              ]}
-              required
-              error={errors.departementId}
+              error={errors.prestataire}
+              placeholder="Nom du prestataire"
             />
 
             <div className="flex justify-end space-x-3 pt-4">

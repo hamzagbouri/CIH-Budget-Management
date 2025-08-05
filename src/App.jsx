@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
 import Depenses from './pages/Depenses';
-import Historique from './pages/Historique';
+
 import Rapports from './pages/Rapports';
 import Budgets from './pages/Budgets';
 import Utilisateurs from './pages/Utilisateurs';
@@ -43,11 +43,7 @@ function App() {
                 <Depenses />
               </ProtectedRoute>
             } />
-            <Route path="/historique" element={
-              <ProtectedRoute allowedRoles={['USER', 'MANAGER']}>
-                <Historique />
-              </ProtectedRoute>
-            } />
+            
                          <Route path="/rapports" element={
                <ProtectedRoute allowedRoles={['USER', 'MANAGER']}>
                  <Rapports />

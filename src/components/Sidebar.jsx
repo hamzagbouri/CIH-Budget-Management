@@ -6,7 +6,7 @@ import cihLogo from '../assets/Cih.png';
 const navItems = [
   { label: 'Tableau de bord', icon: 'dashboard', route: '/dashboard' },
   { label: 'Dépenses', icon: 'account_balance_wallet', route: '/depenses' },
-  { label: 'Historique', icon: 'history', route: '/historique' },
+  { label: 'Rapports', icon: 'assessment', route: '/rapports' },
   { label: 'Mon profil', icon: 'person', route: '/profile' },
 ];
 
