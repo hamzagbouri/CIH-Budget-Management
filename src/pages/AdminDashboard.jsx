@@ -17,6 +17,7 @@ import {
   Title
 } from 'chart.js';
 import { Bar, Pie, Line } from 'react-chartjs-2';
+import Pagination from '../components/Pagination';
 
 ChartJS.register(
   CategoryScale, 
@@ -33,6 +34,7 @@ ChartJS.register(
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState(null);
+  const [pagedDepartments, setPagedDepartments] = useState([]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const { error } = useNotifications();
 
@@ -71,6 +73,10 @@ export default function AdminDashboard() {
     if (percentage >= 90) return 'text-red-600';
     if (percentage >= 75) return 'text-yellow-600';
     return 'text-green-600';
+  };
+
+  const handlePageChange = (pagedData) => {
+    setPagedDepartments(pagedData);
   };
 
   if (loading) {
@@ -316,7 +322,7 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {dashboardData.departementsAnalytics.map((dept, index) => {
+                {(pagedDepartments.length > 0 ? pagedDepartments : dashboardData.departementsAnalytics).map((dept, index) => {
                   const usagePercentage = getBudgetUsagePercentage(dept.budgetUtilise, dept.budgetTotal);
                   return (
                     <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
@@ -347,6 +353,15 @@ export default function AdminDashboard() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {dashboardData.departementsAnalytics.length > 0 && (
+            <Pagination 
+              data={dashboardData.departementsAnalytics}
+              pageSize={10}
+              onPageChange={handlePageChange}
+            />
+          )}
         </div>
       </main>
     </div>

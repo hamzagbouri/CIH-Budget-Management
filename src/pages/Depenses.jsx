@@ -743,9 +743,10 @@ export default function Depenses() {
           <Table
             data={filteredExpenses}
             columns={columns}
-            itemsPerPage={10}
+            enableSort
+            enablePagination
             searchable
-            sortable
+            pageSize={10}
           />
         </div>
 

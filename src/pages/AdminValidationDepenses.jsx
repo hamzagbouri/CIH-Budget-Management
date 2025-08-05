@@ -232,20 +232,30 @@ export default function AdminValidationDepenses() {
             }}
             enableSort
             enablePagination
-            actions={[
-              {
-                label: 'Valider',
-                onClick: handleValidate,
-                condition: (row) => row.status === 'EN_ATTENTE',
-                className: 'bg-green-500 hover:bg-green-600 text-white'
-              },
-              {
-                label: 'Rejeter',
-                onClick: handleReject,
-                condition: (row) => row.status === 'EN_ATTENTE',
-                className: 'bg-red-500 hover:bg-red-600 text-white'
-              }
-            ]}
+            searchable
+            pageSize={10}
+            customActions={(row) => (
+              <div className="flex gap-2">
+                {row.status === 'EN_ATTENTE' && (
+                  <>
+                    <button
+                      onClick={() => handleValidate(row)}
+                      className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded text-sm transition-colors"
+                      title="Valider"
+                    >
+                      <span className="material-icons text-sm">check</span>
+                    </button>
+                    <button
+                      onClick={() => handleReject(row)}
+                      className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded text-sm transition-colors"
+                      title="Rejeter"
+                    >
+                      <span className="material-icons text-sm">close</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
           />
         </div>
 

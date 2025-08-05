@@ -75,7 +75,10 @@ export default function Utilisateurs() {
             data={users}
             onEdit={handleEdit}
             onDelete={handleDelete}
-            enableSort enablePagination
+            enableSort 
+            enablePagination
+            searchable
+            pageSize={10}
           />
         </div>
         <Modal open={showModal} onClose={() => { setShowModal(false); setEditId(null); setForm({ name: '', email: '', role: 'user', service: '' }); setErrors({}); }} title={editId ? 'Modifier l’utilisateur' : 'Créer un utilisateur'}>

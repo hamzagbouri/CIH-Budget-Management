@@ -339,6 +339,8 @@ export default function AdminResponsables() {
             onDelete={handleDelete}
             enableSort
             enablePagination
+            searchable
+            pageSize={10}
             customActions={(row) => (
               <div className="flex gap-2">
                 {row.actif && (

@@ -70,7 +70,10 @@ export default function Budgets() {
             data={services}
             onEdit={handleEdit}
             onDelete={handleDelete}
-            enableSort enablePagination
+            enableSort 
+            enablePagination
+            searchable
+            pageSize={10}
           />
         </div>
         <Modal open={showModal} onClose={() => { setShowModal(false); setEditId(null); setForm({ name: '', budget: '' }); setErrors({}); }} title={editId ? 'Modifier le budget' : 'Créer un budget'}>

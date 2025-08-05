@@ -7,6 +7,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import { useNotifications } from '../components/NotificationSystem';
 import { userExpenseService, userAnalyticsService } from '../services';
 import * as XLSX from 'xlsx';
+import Pagination from '../components/Pagination';
 
 export default function Rapports() {
   const { user } = useAuth();
@@ -14,6 +15,7 @@ export default function Rapports() {
   const [expenses, setExpenses] = useState([]);
   const [prestataires, setPrestataires] = useState([]);
   const [filteredExpenses, setFilteredExpenses] = useState([]);
+  const [pagedExpenses, setPagedExpenses] = useState([]);
   const { success, error: showError } = useNotifications();
 
   // Filter state
@@ -179,6 +181,10 @@ export default function Rapports() {
 
   const getExpenseCount = () => {
     return filteredExpenses.length;
+  };
+
+  const handlePageChange = (pagedData) => {
+    setPagedExpenses(pagedData);
   };
 
   if (loading) {
@@ -407,7 +413,7 @@ export default function Rapports() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredExpenses.map((expense) => (
+                  {(pagedExpenses.length > 0 ? pagedExpenses : filteredExpenses).map((expense) => (
                     <tr key={expense.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div>
@@ -440,12 +446,21 @@ export default function Rapports() {
               </table>
             </div>
           ) : (
-            <div className="text-center py-12">
+                          <div className="text-center py-12">
               <span className="material-icons text-gray-300 text-4xl mb-2">assessment</span>
               <p className="text-gray-500">Aucune dépense trouvée avec les filtres actuels</p>
             </div>
           )}
         </div>
+
+        {/* Pagination */}
+        {filteredExpenses.length > 0 && (
+          <Pagination 
+            data={filteredExpenses}
+            pageSize={10}
+            onPageChange={handlePageChange}
+          />
+        )}
       </main>
     </div>
   );

@@ -306,6 +306,8 @@ export default function AdminDepartements() {
             onDelete={handleDelete}
             enableSort
             enablePagination
+            searchable
+            pageSize={10}
           />
         </div>
 
