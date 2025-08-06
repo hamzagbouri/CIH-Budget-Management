@@ -64,6 +64,7 @@ export const budgetDepartmentService = {
   // Update budget department
   async updateBudgetDepartment(id, budgetDepartmentData) {
     try {
+      console.log(budgetDepartmentData);
       const response = await apiClient.put(`/api/budget-departements/${id}`, budgetDepartmentData);
       return response.data;
     } catch (error) {

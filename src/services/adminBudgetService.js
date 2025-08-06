@@ -44,6 +44,7 @@ export const adminBudgetService = {
   // Update department budget
   async updateDepartmentBudget(departementId, budgetData) {
     try {
+      console.log(budgetData);
       const response = await apiClient.put(`/api/admin/departements/${departementId}/budget`, budgetData);
       return response.data;
     } catch (error) {
