@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import java.util.HashMap;
 import java.util.Map;
 
+// Temporarily disabled to test Swagger
+/*
 @ControllerAdvice
 public class GlobalExceptionHandler {
     
@@ -24,4 +26,5 @@ public class GlobalExceptionHandler {
         error.put("error", "Une erreur inattendue s'est produite");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
-} 
+}
+*/ 
