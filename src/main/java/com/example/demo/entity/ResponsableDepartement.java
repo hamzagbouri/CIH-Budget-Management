@@ -35,12 +35,27 @@ public class ResponsableDepartement {
     @Column(name = "date_creation", nullable = false)
     private LocalDateTime dateCreation;
     
+    @Column(name = "date_modification", nullable = true)
+    private LocalDateTime dateModification;
+    
+    @Column(name = "utilisateur_modification", nullable = true)
+    private String utilisateurModification;
+    
     @Column(name = "actif", nullable = false)
     private Boolean actif = true;
+    
+    @Column(name = "raison_modification", nullable = true)
+    private String raisonModification;
     
     @PrePersist
     protected void onCreate() {
         dateCreation = LocalDateTime.now();
+        actif = true;
+    }
+    
+    @PreUpdate
+    protected void onUpdate() {
+        dateModification = LocalDateTime.now();
     }
 
     // Getters and Setters
@@ -83,6 +98,22 @@ public class ResponsableDepartement {
     public void setDateCreation(LocalDateTime dateCreation) {
         this.dateCreation = dateCreation;
     }
+    
+    public LocalDateTime getDateModification() {
+        return dateModification;
+    }
+
+    public void setDateModification(LocalDateTime dateModification) {
+        this.dateModification = dateModification;
+    }
+    
+    public String getUtilisateurModification() {
+        return utilisateurModification;
+    }
+
+    public void setUtilisateurModification(String utilisateurModification) {
+        this.utilisateurModification = utilisateurModification;
+    }
 
     public Boolean getActif() {
         return actif;
@@ -90,5 +121,13 @@ public class ResponsableDepartement {
 
     public void setActif(Boolean actif) {
         this.actif = actif;
+    }
+    
+    public String getRaisonModification() {
+        return raisonModification;
+    }
+
+    public void setRaisonModification(String raisonModification) {
+        this.raisonModification = raisonModification;
     }
 } 

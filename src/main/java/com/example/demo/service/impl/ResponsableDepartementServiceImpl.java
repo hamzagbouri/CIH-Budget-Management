@@ -12,17 +12,27 @@ import com.example.demo.repository.DepartementRepository;
 import com.example.demo.service.ResponsableDepartementService;
 import com.example.demo.service.EmailService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.time.LocalDateTime;
+import java.time.Year;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 import java.util.stream.Collectors;
+import java.security.SecureRandom;
 
 @Service
 public class ResponsableDepartementServiceImpl implements ResponsableDepartementService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(ResponsableDepartementServiceImpl.class);
     
     @Autowired
     private ResponsableDepartementRepository responsableDepartementRepository;
@@ -39,54 +49,174 @@ public class ResponsableDepartementServiceImpl implements ResponsableDepartement
     @Autowired
     private PasswordEncoder passwordEncoder;
     
-    private String generatePassword() {
-        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    private final SecureRandom secureRandom = new SecureRandom();
+    
+    private String generateSecurePassword() {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
         StringBuilder password = new StringBuilder();
-        Random random = new Random();
         
-        for (int i = 0; i < 8; i++) {
-            password.append(chars.charAt(random.nextInt(chars.length())));
+        for (int i = 0; i < 12; i++) {
+            password.append(chars.charAt(secureRandom.nextInt(chars.length())));
         }
         
         return password.toString();
     }
     
     private ResponsableDepartementDTO toDTO(ResponsableDepartement rd) {
-        ResponsableDepartementDTO dto = new ResponsableDepartementDTO();
-        dto.setId(rd.getId());
-        dto.setAnnee(rd.getAnnee());
-        dto.setUtilisateurId(rd.getUtilisateur().getId());
-        dto.setUtilisateurNom(rd.getUtilisateur().getNom());
-        dto.setUtilisateurEmail(rd.getUtilisateur().getEmail());
-        dto.setUtilisateurMatricule(rd.getUtilisateur().getMatricule());
-        dto.setDepartementId(rd.getDepartement().getId());
-        dto.setDepartementNom(rd.getDepartement().getNom());
-        dto.setDateCreation(rd.getDateCreation());
-        dto.setActif(rd.getActif());
-        return dto;
-    }
-    
-    @Override
-    public List<ResponsableDepartementDTO> findAll() {
-        System.out.println("=== ResponsableDepartementServiceImpl.findAll() called ===");
+        logger.info("=== DEBUG: toDTO called for responsable ID: " + rd.getId() + " ===");
         try {
-            List<ResponsableDepartement> responsables = responsableDepartementRepository.findAllResponsables();
-            System.out.println("Found " + responsables.size() + " responsables in database");
-            return responsables.stream()
-                    .map(this::toDTO)
-                    .collect(Collectors.toList());
+            ResponsableDepartementDTO dto = new ResponsableDepartementDTO();
+            dto.setId(rd.getId());
+            dto.setAnnee(rd.getAnnee());
+            dto.setUtilisateurId(rd.getUtilisateur().getId());
+            dto.setUtilisateurNom(rd.getUtilisateur().getNom());
+            dto.setUtilisateurEmail(rd.getUtilisateur().getEmail());
+            dto.setUtilisateurMatricule(rd.getUtilisateur().getMatricule());
+            dto.setDepartementId(rd.getDepartement().getId());
+            dto.setDepartementNom(rd.getDepartement().getNom());
+            dto.setDateCreation(rd.getDateCreation());
+            dto.setDateModification(rd.getDateModification()); // Can be null
+            dto.setUtilisateurModification(rd.getUtilisateurModification()); // Can be null
+            dto.setActif(rd.getActif());
+            dto.setRaisonModification(rd.getRaisonModification()); // Can be null
+            logger.info("=== DEBUG: toDTO completed successfully ===");
+            return dto;
         } catch (Exception e) {
-            System.err.println("Error in findAll: " + e.getMessage());
+            logger.error("=== ERROR in toDTO ===");
+            logger.error("Error message: " + e.getMessage());
+            logger.error("Error type: " + e.getClass().getSimpleName());
             e.printStackTrace();
             throw e;
         }
     }
     
+    // Validation methods
+    @Override
+    public boolean validateYearAssignment(Integer annee) {
+        if (annee == null) {
+            throw new IllegalArgumentException("L'année ne peut pas être null");
+        }
+        
+        int currentYear = Year.now().getValue();
+        if (annee < 2020 || annee > 2030) {
+            throw new IllegalArgumentException("L'année doit être entre 2020 et 2030");
+        }
+        
+        // Prevent assigning responsibilities for past years
+        if (annee < currentYear) {
+            throw new IllegalArgumentException("Impossible d'assigner une responsabilité pour une année passée");
+        }
+        
+        return true;
+    }
+    
+    @Override
+    public boolean validateUserExists(Integer userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("L'ID utilisateur ne peut pas être null");
+        }
+        
+        Optional<Utilisateur> user = utilisateurRepository.findById(userId);
+        if (!user.isPresent()) {
+            throw new IllegalArgumentException("Utilisateur non trouvé avec l'ID: " + userId);
+        }
+        
+        return true;
+    }
+    
+    @Override
+    public boolean validateDepartementExists(Integer departementId) {
+        if (departementId == null) {
+            throw new IllegalArgumentException("L'ID département ne peut pas être null");
+        }
+        
+        Optional<Departement> departement = departementRepository.findById(departementId);
+        if (!departement.isPresent()) {
+            throw new IllegalArgumentException("Département non trouvé avec l'ID: " + departementId);
+        }
+        
+        return true;
+    }
+    
+    @Override
+    public boolean validateReassignment(Integer departementId, Integer userId, Integer annee) {
+        // Validate inputs
+        validateYearAssignment(annee);
+        validateUserExists(userId);
+        validateDepartementExists(departementId);
+        
+        // Check if user is already responsible for this department in this year
+        Optional<ResponsableDepartement> existingAssignment = responsableDepartementRepository
+                .findByUtilisateurIdAndAnnee(userId, annee);
+        
+        if (existingAssignment.isPresent()) {
+            ResponsableDepartement existing = existingAssignment.get();
+            if (existing.getDepartement().getId().equals(departementId)) {
+                throw new IllegalArgumentException("L'utilisateur est déjà responsable de ce département pour l'année " + annee);
+            }
+        }
+        
+        return true;
+    }
+    
+    @Override
+    public boolean canUserBeResponsable(Integer userId, Integer annee) {
+        validateUserExists(userId);
+        validateYearAssignment(annee);
+        
+        // Check if user is already responsible for another department in this year
+        Long activeAssignments = responsableDepartementRepository.countActiveByUtilisateurIdAndAnnee(userId, annee);
+        return activeAssignments == 0;
+    }
+    
+    // Business logic methods
+    @Override
+    @Transactional
+    public void deactivateCurrentResponsable(Integer departementId, Integer annee, String modifiedBy, String reason) {
+        Optional<ResponsableDepartement> currentResponsable = responsableDepartementRepository
+                .findByDepartementIdAndAnnee(departementId, annee);
+        
+        if (currentResponsable.isPresent()) {
+            ResponsableDepartement responsable = currentResponsable.get();
+            responsable.setActif(false);
+            responsable.setUtilisateurModification(modifiedBy);
+            responsable.setRaisonModification(reason);
+            responsableDepartementRepository.save(responsable);
+        }
+    }
+    
+    @Override
+    @Transactional
+    public void deactivateUserAssignments(Integer userId, Integer annee, String modifiedBy, String reason) {
+        List<ResponsableDepartement> userAssignments = responsableDepartementRepository
+                .findAllByUtilisateurIdAndAnnee(userId, annee);
+        
+        for (ResponsableDepartement assignment : userAssignments) {
+            if (assignment.getActif()) {
+                assignment.setActif(false);
+                assignment.setUtilisateurModification(modifiedBy);
+                assignment.setRaisonModification(reason);
+                responsableDepartementRepository.save(assignment);
+            }
+        }
+    }
+    
+    // Enhanced CRUD operations
+    @Override
+    public List<ResponsableDepartementDTO> findAll() {
+        try {
+            List<ResponsableDepartement> responsables = responsableDepartementRepository.findAllResponsables();
+            return responsables.stream()
+                    .map(this::toDTO)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            throw new RuntimeException("Erreur lors de la récupération des responsables: " + e.getMessage(), e);
+        }
+    }
+    
     @Override
     public List<ResponsableDepartementDTO> findAllActive() {
-        System.out.println("=== ResponsableDepartementServiceImpl.findAllActive() called ===");
         List<ResponsableDepartement> responsables = responsableDepartementRepository.findAllActive();
-        System.out.println("Found " + responsables.size() + " active responsables in database");
         return responsables.stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
@@ -94,9 +224,7 @@ public class ResponsableDepartementServiceImpl implements ResponsableDepartement
     
     @Override
     public List<ResponsableDepartementDTO> findAllResponsables() {
-        System.out.println("=== ResponsableDepartementServiceImpl.findAllResponsables() called ===");
         List<ResponsableDepartement> responsables = responsableDepartementRepository.findAllResponsables();
-        System.out.println("Found " + responsables.size() + " all responsables in database");
         return responsables.stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
@@ -104,6 +232,7 @@ public class ResponsableDepartementServiceImpl implements ResponsableDepartement
     
     @Override
     public List<ResponsableDepartementDTO> findByAnnee(Integer annee) {
+        validateYearAssignment(annee);
         return responsableDepartementRepository.findByAnnee(annee)
                 .stream()
                 .map(this::toDTO)
@@ -112,6 +241,7 @@ public class ResponsableDepartementServiceImpl implements ResponsableDepartement
     
     @Override
     public List<ResponsableDepartementDTO> findByDepartementId(Integer departementId) {
+        validateDepartementExists(departementId);
         return responsableDepartementRepository.findByDepartementId(departementId)
                 .stream()
                 .map(this::toDTO)
@@ -120,6 +250,7 @@ public class ResponsableDepartementServiceImpl implements ResponsableDepartement
     
     @Override
     public List<ResponsableDepartementDTO> findAllByDepartementId(Integer departementId) {
+        validateDepartementExists(departementId);
         return responsableDepartementRepository.findAllByDepartementId(departementId)
                 .stream()
                 .map(this::toDTO)
@@ -128,22 +259,37 @@ public class ResponsableDepartementServiceImpl implements ResponsableDepartement
     
     @Override
     public ResponsableDepartementDTO findById(Integer id) {
+        if (id == null) {
+            throw new IllegalArgumentException("L'ID ne peut pas être null");
+        }
+        
         return responsableDepartementRepository.findById(id)
                 .map(this::toDTO)
-                .orElse(null);
+                .orElseThrow(() -> new IllegalArgumentException("Responsable non trouvé avec l'ID: " + id));
     }
     
     @Override
     @Transactional
     public CreateResponsableResponseDTO createResponsable(CreateResponsableRequestDTO request) {
+        // Validate input
+        if (request == null) {
+            throw new IllegalArgumentException("La requête ne peut pas être null");
+        }
+        
+        if (!StringUtils.hasText(request.getEmail()) || !StringUtils.hasText(request.getNom()) || 
+            !StringUtils.hasText(request.getMatricule())) {
+            throw new IllegalArgumentException("Email, nom et matricule sont obligatoires");
+        }
+        
+        validateYearAssignment(request.getAnnee());
+        validateDepartementExists(request.getDepartementId());
+        
         // Check if user already exists
         Optional<Utilisateur> existingUser = utilisateurRepository.findByEmail(request.getEmail());
         if (existingUser.isPresent()) {
             throw new RuntimeException("Un utilisateur avec cet email existe déjà");
         }
         
-        // Check if user is already responsable for this year (this check is not needed for new users)
-        // But we can check by matricule if needed
         Optional<Utilisateur> existingUserByMatricule = utilisateurRepository.findByMatricule(request.getMatricule());
         if (existingUserByMatricule.isPresent()) {
             throw new RuntimeException("Un utilisateur avec ce matricule existe déjà");
@@ -160,8 +306,8 @@ public class ResponsableDepartementServiceImpl implements ResponsableDepartement
         Departement departement = departementRepository.findById(request.getDepartementId())
                 .orElseThrow(() -> new RuntimeException("Département non trouvé"));
         
-        // Generate password
-        String generatedPassword = generatePassword();
+        // Generate secure password
+        String generatedPassword = generateSecurePassword();
         
         // Create user
         Utilisateur utilisateur = new Utilisateur();
@@ -188,7 +334,7 @@ public class ResponsableDepartementServiceImpl implements ResponsableDepartement
             emailService.sendPasswordEmail(request.getEmail(), request.getNom(), generatedPassword);
         } catch (Exception e) {
             // Log the error but don't fail the operation
-            System.err.println("Erreur lors de l'envoi de l'email: " + e.getMessage());
+            logger.error("Erreur lors de l'envoi de l'email: " + e.getMessage());
         }
         
         // Create response
@@ -208,26 +354,207 @@ public class ResponsableDepartementServiceImpl implements ResponsableDepartement
     @Override
     @Transactional
     public ResponsableDepartementDTO update(Integer id, ResponsableDepartementDTO dto) {
+        if (id == null) {
+            throw new IllegalArgumentException("L'ID ne peut pas être null");
+        }
+        
         ResponsableDepartement responsableDepartement = responsableDepartementRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Responsable non trouvé"));
         
-        // Update logic here if needed
-        // For now, we'll just return the existing one
+        // Validate that we're not modifying historical data
+        validateHistoricalIntegrity(responsableDepartement.getDepartement().getId(), responsableDepartement.getAnnee());
+        
+        // Update only allowed fields
+        if (dto.getActif() != null) {
+            responsableDepartement.setActif(dto.getActif());
+        }
+        
+        if (StringUtils.hasText(dto.getRaisonModification())) {
+            responsableDepartement.setRaisonModification(dto.getRaisonModification());
+        }
+        
+        responsableDepartement = responsableDepartementRepository.save(responsableDepartement);
         return toDTO(responsableDepartement);
     }
     
     @Override
     @Transactional
     public void delete(Integer id) {
-        responsableDepartementRepository.deleteById(id);
+        if (id == null) {
+            throw new IllegalArgumentException("L'ID ne peut pas être null");
+        }
+        
+        ResponsableDepartement responsableDepartement = responsableDepartementRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Responsable non trouvé"));
+        
+        // Soft delete instead of hard delete
+        responsableDepartement.setActif(false);
+        responsableDepartement.setRaisonModification("Suppression");
+        responsableDepartementRepository.save(responsableDepartement);
     }
     
     @Override
     @Transactional
     public void deactivate(Integer id) {
+        if (id == null) {
+            throw new IllegalArgumentException("L'ID ne peut pas être null");
+        }
+        
         ResponsableDepartement responsableDepartement = responsableDepartementRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Responsable non trouvé"));
+        
         responsableDepartement.setActif(false);
+        responsableDepartement.setRaisonModification("Désactivation");
         responsableDepartementRepository.save(responsableDepartement);
+    }
+    
+    // New methods to fix identified bugs
+    @Override
+    @Transactional
+    public ResponsableDepartementDTO reassignResponsable(Integer departementId, Integer newUserId, Integer annee, String modifiedBy, String reason) {
+        validateReassignment(departementId, newUserId, annee);
+        
+        // Deactivate current responsible for this department
+        deactivateCurrentResponsable(departementId, annee, modifiedBy, reason);
+        
+        // Deactivate any existing assignments for the new user in this year
+        deactivateUserAssignments(newUserId, annee, modifiedBy, "Réassignation");
+        
+        // Create new assignment
+        return createResponsableForExistingUser(newUserId, departementId, annee, modifiedBy);
+    }
+    
+    @Override
+    @Transactional
+    public ResponsableDepartementDTO changeDepartementResponsable(Integer departementId, Integer newUserId, Integer annee, String modifiedBy, String reason) {
+        validateReassignment(departementId, newUserId, annee);
+        
+        // Deactivate current responsible
+        deactivateCurrentResponsable(departementId, annee, modifiedBy, reason);
+        
+        // Create new assignment
+        return createResponsableForExistingUser(newUserId, departementId, annee, modifiedBy);
+    }
+    
+    @Override
+    public List<ResponsableDepartementDTO> getUserAssignments(Integer userId) {
+        validateUserExists(userId);
+        
+        return responsableDepartementRepository.findActiveByUtilisateurId(userId)
+                .stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+    
+    @Override
+    public List<ResponsableDepartementDTO> getDepartementHistory(Integer departementId) {
+        validateDepartementExists(departementId);
+        
+        return responsableDepartementRepository.findHistoryByDepartementId(departementId)
+                .stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+    
+    @Override
+    public ResponsableDepartementDTO getCurrentResponsable(Integer departementId, Integer annee) {
+        validateDepartementExists(departementId);
+        validateYearAssignment(annee);
+        
+        Optional<ResponsableDepartement> responsable = responsableDepartementRepository
+                .findByDepartementIdAndAnnee(departementId, annee);
+        
+        return responsable.map(this::toDTO).orElse(null);
+    }
+    
+    @Override
+    public void validateHistoricalIntegrity(Integer departementId, Integer annee) {
+        int currentYear = Year.now().getValue();
+        
+        if (annee < currentYear) {
+            throw new IllegalArgumentException("Impossible de modifier les données historiques");
+        }
+    }
+    
+    @Override
+    public ResponsableDepartementDTO createResponsableForExistingUser(Integer userId, Integer departementId, Integer annee, String modifiedBy) {
+        validateUserExists(userId);
+        validateDepartementExists(departementId);
+        validateYearAssignment(annee);
+        
+        Utilisateur utilisateur = utilisateurRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+        
+        Departement departement = departementRepository.findById(departementId)
+                .orElseThrow(() -> new RuntimeException("Département non trouvé"));
+        
+        ResponsableDepartement responsableDepartement = new ResponsableDepartement();
+        responsableDepartement.setAnnee(annee);
+        responsableDepartement.setUtilisateur(utilisateur);
+        responsableDepartement.setDepartement(departement);
+        responsableDepartement.setActif(true);
+        responsableDepartement.setUtilisateurModification(modifiedBy);
+        responsableDepartement.setRaisonModification("Création");
+        
+        responsableDepartement = responsableDepartementRepository.save(responsableDepartement);
+        return toDTO(responsableDepartement);
+    }
+    
+    // Pagination methods
+    @Override
+    public Page<ResponsableDepartementDTO> findAllActiveWithPagination(Pageable pageable) {
+        logger.info("=== DEBUG: findAllActiveWithPagination called ===");
+        try {
+            logger.info("=== DEBUG: Calling repository method ===");
+            Page<ResponsableDepartement> responsablesPage = responsableDepartementRepository.findByActifTrue(pageable);
+            logger.info("=== DEBUG: Repository call successful, found " + responsablesPage.getTotalElements() + " elements ===");
+            
+            Page<ResponsableDepartementDTO> dtosPage = responsablesPage.map(this::toDTO);
+            logger.info("=== DEBUG: DTO mapping successful ===");
+            
+            return dtosPage;
+        } catch (Exception e) {
+            logger.error("=== ERROR in findAllActiveWithPagination ===");
+            logger.error("Error message: " + e.getMessage());
+            logger.error("Error type: " + e.getClass().getSimpleName());
+            e.printStackTrace();
+            throw e;
+        }
+    }
+    
+    @Override
+    public Page<ResponsableDepartementDTO> findByAnneeWithPagination(Integer annee, Pageable pageable) {
+        validateYearAssignment(annee);
+        return responsableDepartementRepository.findByAnneeAndActifTrue(annee, pageable)
+                .map(this::toDTO);
+    }
+    
+    // Audit methods
+    @Override
+    public List<ResponsableDepartementDTO> findModificationsByUser(String utilisateurModification) {
+        if (!StringUtils.hasText(utilisateurModification)) {
+            throw new IllegalArgumentException("L'utilisateur de modification ne peut pas être vide");
+        }
+        
+        return responsableDepartementRepository.findByUtilisateurModification(utilisateurModification)
+                .stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+    
+    @Override
+    public List<ResponsableDepartementDTO> findModificationsBetweenDates(LocalDateTime startDate, LocalDateTime endDate) {
+        if (startDate == null || endDate == null) {
+            throw new IllegalArgumentException("Les dates de début et de fin ne peuvent pas être null");
+        }
+        
+        if (startDate.isAfter(endDate)) {
+            throw new IllegalArgumentException("La date de début ne peut pas être après la date de fin");
+        }
+        
+        return responsableDepartementRepository.findModificationsBetweenDates(startDate, endDate)
+                .stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
     }
 } 

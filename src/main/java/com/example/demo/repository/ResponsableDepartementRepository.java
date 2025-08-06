@@ -1,6 +1,8 @@
 package com.example.demo.repository;
 
 import com.example.demo.entity.ResponsableDepartement;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -39,4 +41,32 @@ public interface ResponsableDepartementRepository extends JpaRepository<Responsa
     // New method for admin functionality
     @Query("SELECT rd FROM ResponsableDepartement rd WHERE rd.departement.id = :departementId AND rd.annee = :annee AND rd.actif = true")
     ResponsableDepartement findByDepartementIdAndAnneeAndActifTrue(@Param("departementId") Integer departementId, @Param("annee") Integer annee);
+    
+    // Enhanced methods for better data management
+    @Query("SELECT rd FROM ResponsableDepartement rd WHERE rd.utilisateur.id = :utilisateurId AND rd.actif = true ORDER BY rd.annee DESC")
+    List<ResponsableDepartement> findActiveByUtilisateurId(@Param("utilisateurId") Integer utilisateurId);
+    
+    @Query("SELECT rd FROM ResponsableDepartement rd WHERE rd.departement.id = :departementId ORDER BY rd.annee DESC")
+    List<ResponsableDepartement> findHistoryByDepartementId(@Param("departementId") Integer departementId);
+    
+    @Query("SELECT rd FROM ResponsableDepartement rd WHERE rd.utilisateur.id = :utilisateurId AND rd.annee = :annee")
+    List<ResponsableDepartement> findAllByUtilisateurIdAndAnnee(@Param("utilisateurId") Integer utilisateurId, @Param("annee") Integer annee);
+    
+    @Query("SELECT COUNT(rd) FROM ResponsableDepartement rd WHERE rd.utilisateur.id = :utilisateurId AND rd.annee = :annee AND rd.actif = true")
+    Long countActiveByUtilisateurIdAndAnnee(@Param("utilisateurId") Integer utilisateurId, @Param("annee") Integer annee);
+    
+    @Query("SELECT COUNT(rd) FROM ResponsableDepartement rd WHERE rd.departement.id = :departementId AND rd.annee = :annee AND rd.actif = true")
+    Long countActiveByDepartementIdAndAnnee(@Param("departementId") Integer departementId, @Param("annee") Integer annee);
+    
+    // Pagination support - Using method naming convention for proper pagination
+    Page<ResponsableDepartement> findByActifTrue(Pageable pageable);
+    
+    Page<ResponsableDepartement> findByAnneeAndActifTrue(Integer annee, Pageable pageable);
+    
+    // Audit methods
+    @Query("SELECT rd FROM ResponsableDepartement rd WHERE rd.utilisateurModification = :utilisateurModification ORDER BY rd.dateModification DESC")
+    List<ResponsableDepartement> findByUtilisateurModification(@Param("utilisateurModification") String utilisateurModification);
+    
+    @Query("SELECT rd FROM ResponsableDepartement rd WHERE rd.dateModification >= :startDate AND rd.dateModification <= :endDate ORDER BY rd.dateModification DESC")
+    List<ResponsableDepartement> findModificationsBetweenDates(@Param("startDate") java.time.LocalDateTime startDate, @Param("endDate") java.time.LocalDateTime endDate);
 } 
