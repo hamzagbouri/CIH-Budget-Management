@@ -69,4 +69,8 @@ public interface ResponsableDepartementRepository extends JpaRepository<Responsa
     
     @Query("SELECT rd FROM ResponsableDepartement rd WHERE rd.dateModification >= :startDate AND rd.dateModification <= :endDate ORDER BY rd.dateModification DESC")
     List<ResponsableDepartement> findModificationsBetweenDates(@Param("startDate") java.time.LocalDateTime startDate, @Param("endDate") java.time.LocalDateTime endDate);
+    
+    // New method for user profile functionality
+    @Query("SELECT rd FROM ResponsableDepartement rd WHERE rd.utilisateur.id = :utilisateurId ORDER BY rd.annee DESC")
+    List<ResponsableDepartement> findByUtilisateurIdOrderByAnneeDesc(@Param("utilisateurId") Integer utilisateurId);
 } 

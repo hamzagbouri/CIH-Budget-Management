@@ -42,6 +42,7 @@ public class DepenseServiceImpl implements DepenseService {
         dto.setMontant(d.getMontant());
         if (d.getDepartement() != null) dto.setDepartementId(d.getDepartement().getId());
         dto.setStatus(d.getStatus());
+        dto.setPrestataire(d.getPrestataire());
         return dto;
     }
 
@@ -54,6 +55,7 @@ public class DepenseServiceImpl implements DepenseService {
         d.setDate(dto.getDate());
         d.setMontant(dto.getMontant());
         d.setStatus(dto.getStatus());
+        d.setPrestataire(dto.getPrestataire());
         // Set department if departementId is provided
         if (dto.getDepartementId() != null) {
             Optional<Departement> departementOpt = departementRepository.findById(dto.getDepartementId());

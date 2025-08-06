@@ -16,6 +16,7 @@ import java.util.function.Function;
 public class JwtUtil {
     
     private static final long JWT_TOKEN_VALIDITY = 5 * 60 * 60; // 5 hours
+    private static final long PASSWORD_RESET_TOKEN_VALIDITY = 60 * 60; // 1 hour
     private final SecretKey secret = Keys.hmacShaKeyFor("your-secret-key-here-make-it-long-enough-for-hs256-algorithm-this-is-32-bytes-long".getBytes());
     
     public String extractUsername(String token) {
@@ -46,12 +47,44 @@ public class JwtUtil {
         return createToken(claims, username);
     }
     
+    public String generatePasswordResetToken(String email) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("type", "password_reset");
+        return createPasswordResetToken(claims, email);
+    }
+    
+    public String validatePasswordResetToken(String token) {
+        try {
+            final Claims claims = extractAllClaims(token);
+            String type = claims.get("type", String.class);
+            if (!"password_reset".equals(type)) {
+                return null;
+            }
+            if (isTokenExpired(token)) {
+                return null;
+            }
+            return claims.getSubject();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+    
     private String createToken(Map<String, Object> claims, String subject) {
         return Jwts.builder()
                 .setClaims(claims)
                 .setSubject(subject)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + JWT_TOKEN_VALIDITY * 1000))
+                .signWith(secret, SignatureAlgorithm.HS256)
+                .compact();
+    }
+    
+    private String createPasswordResetToken(Map<String, Object> claims, String subject) {
+        return Jwts.builder()
+                .setClaims(claims)
+                .setSubject(subject)
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + PASSWORD_RESET_TOKEN_VALIDITY * 1000))
                 .signWith(secret, SignatureAlgorithm.HS256)
                 .compact();
     }

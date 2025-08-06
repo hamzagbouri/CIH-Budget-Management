@@ -14,6 +14,7 @@ public interface DepenseRepository extends JpaRepository<Depense, Integer> {
     List<Depense> findByDepartementAndDateBetween(Departement departement, LocalDate startDate, LocalDate endDate);
     List<Depense> findByStatus(String status);
     List<Depense> findByDepartementAndStatus(Departement departement, String status);
+    List<Depense> findByDepartementId(Integer departementId);
     
     // New methods for admin functionality
     @Query("SELECT d FROM Depense d WHERE YEAR(d.date) = :annee")
