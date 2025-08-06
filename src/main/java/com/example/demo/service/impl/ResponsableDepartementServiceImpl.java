@@ -98,15 +98,20 @@ public class ResponsableDepartementServiceImpl implements ResponsableDepartement
         }
         
         int currentYear = Year.now().getValue();
+        logger.info("=== DEBUG: Validating year assignment ===");
+        logger.info("Requested year: " + annee);
+        logger.info("Current year: " + currentYear);
+        
         if (annee < 2020 || annee > 2030) {
             throw new IllegalArgumentException("L'année doit être entre 2020 et 2030");
         }
         
-        // Prevent assigning responsibilities for past years
+        // Allow assignments for current year and future years
         if (annee < currentYear) {
-            throw new IllegalArgumentException("Impossible d'assigner une responsabilité pour une année passée");
+            throw new IllegalArgumentException("Impossible d'assigner une responsabilité pour une année passée. Année demandée: " + annee + ", Année actuelle: " + currentYear);
         }
         
+        logger.info("=== DEBUG: Year validation passed ===");
         return true;
     }
     
@@ -271,6 +276,9 @@ public class ResponsableDepartementServiceImpl implements ResponsableDepartement
     @Override
     @Transactional
     public CreateResponsableResponseDTO createResponsable(CreateResponsableRequestDTO request) {
+        logger.info("=== DEBUG: createResponsable called ===");
+        logger.info("Request data: " + request.toString());
+        
         // Validate input
         if (request == null) {
             throw new IllegalArgumentException("La requête ne peut pas être null");
@@ -281,8 +289,13 @@ public class ResponsableDepartementServiceImpl implements ResponsableDepartement
             throw new IllegalArgumentException("Email, nom et matricule sont obligatoires");
         }
         
+        logger.info("=== DEBUG: Basic validation passed ===");
+        
         validateYearAssignment(request.getAnnee());
+        logger.info("=== DEBUG: Year validation passed ===");
+        
         validateDepartementExists(request.getDepartementId());
+        logger.info("=== DEBUG: Department validation passed ===");
         
         // Check if user already exists
         Optional<Utilisateur> existingUser = utilisateurRepository.findByEmail(request.getEmail());
@@ -295,12 +308,16 @@ public class ResponsableDepartementServiceImpl implements ResponsableDepartement
             throw new RuntimeException("Un utilisateur avec ce matricule existe déjà");
         }
         
+        logger.info("=== DEBUG: User uniqueness validation passed ===");
+        
         // Check if department already has a responsable for this year
         Optional<ResponsableDepartement> existingDepartementResponsable = responsableDepartementRepository
                 .findByDepartementIdAndAnnee(request.getDepartementId(), request.getAnnee());
         if (existingDepartementResponsable.isPresent()) {
             throw new RuntimeException("Ce département a déjà un responsable pour l'année " + request.getAnnee());
         }
+        
+        logger.info("=== DEBUG: Department assignment validation passed ===");
         
         // Get department
         Departement departement = departementRepository.findById(request.getDepartementId())
@@ -319,6 +336,7 @@ public class ResponsableDepartementServiceImpl implements ResponsableDepartement
         utilisateur.setDepartement(departement);
         
         utilisateur = utilisateurRepository.save(utilisateur);
+        logger.info("=== DEBUG: User created successfully ===");
         
         // Create responsable-departement relationship
         ResponsableDepartement responsableDepartement = new ResponsableDepartement();
@@ -328,6 +346,7 @@ public class ResponsableDepartementServiceImpl implements ResponsableDepartement
         responsableDepartement.setActif(true);
         
         responsableDepartement = responsableDepartementRepository.save(responsableDepartement);
+        logger.info("=== DEBUG: Responsable assignment created successfully ===");
         
         // Send email with password
         try {
@@ -348,12 +367,16 @@ public class ResponsableDepartementServiceImpl implements ResponsableDepartement
         response.setGeneratedPassword(generatedPassword);
         response.setMessage("Responsable créé avec succès. Un email avec le mot de passe a été envoyé.");
         
+        logger.info("=== DEBUG: createResponsable completed successfully ===");
         return response;
     }
     
     @Override
     @Transactional
     public ResponsableDepartementDTO update(Integer id, ResponsableDepartementDTO dto) {
+        logger.info("=== DEBUG: update method called for ID: " + id + " ===");
+        logger.info("=== DEBUG: DTO data: " + dto.toString() + " ===");
+        
         if (id == null) {
             throw new IllegalArgumentException("L'ID ne peut pas être null");
         }
@@ -361,19 +384,50 @@ public class ResponsableDepartementServiceImpl implements ResponsableDepartement
         ResponsableDepartement responsableDepartement = responsableDepartementRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Responsable non trouvé"));
         
+        logger.info("=== DEBUG: Found responsable with department ID: " + responsableDepartement.getDepartement().getId() + " ===");
+        
         // Validate that we're not modifying historical data
         validateHistoricalIntegrity(responsableDepartement.getDepartement().getId(), responsableDepartement.getAnnee());
         
-        // Update only allowed fields
+        // Handle department change if provided
+        if (dto.getDepartementId() != null && !dto.getDepartementId().equals(responsableDepartement.getDepartement().getId())) {
+            logger.info("=== DEBUG: Department change requested from " + responsableDepartement.getDepartement().getId() + " to " + dto.getDepartementId() + " ===");
+            
+            // Check if the new department is already assigned to someone else for this year
+            Optional<ResponsableDepartement> existingAssignment = responsableDepartementRepository
+                    .findByDepartementIdAndAnnee(dto.getDepartementId(), responsableDepartement.getAnnee());
+            
+            if (existingAssignment.isPresent() && existingAssignment.get().getActif()) {
+                logger.info("=== DEBUG: Department " + dto.getDepartementId() + " is already assigned for year " + responsableDepartement.getAnnee() + " ===");
+                throw new RuntimeException("Ce département est déjà assigné à quelqu'un pour l'année " + responsableDepartement.getAnnee());
+            }
+            
+            // Get the new department
+            Departement newDepartement = departementRepository.findById(dto.getDepartementId())
+                    .orElseThrow(() -> new RuntimeException("Département non trouvé avec l'ID: " + dto.getDepartementId()));
+            
+            // Update the department
+            responsableDepartement.setDepartement(newDepartement);
+            responsableDepartement.setUtilisateurModification("admin@cihbank.ma"); // You might want to get this from the request
+            responsableDepartement.setRaisonModification("Changement de département");
+            
+            logger.info("=== DEBUG: Department updated successfully ===");
+        }
+        
+        // Update other allowed fields
         if (dto.getActif() != null) {
             responsableDepartement.setActif(dto.getActif());
+            logger.info("=== DEBUG: Active status updated to: " + dto.getActif() + " ===");
         }
         
         if (StringUtils.hasText(dto.getRaisonModification())) {
             responsableDepartement.setRaisonModification(dto.getRaisonModification());
+            logger.info("=== DEBUG: Reason updated to: " + dto.getRaisonModification() + " ===");
         }
         
         responsableDepartement = responsableDepartementRepository.save(responsableDepartement);
+        logger.info("=== DEBUG: Responsable updated successfully ===");
+        
         return toDTO(responsableDepartement);
     }
     

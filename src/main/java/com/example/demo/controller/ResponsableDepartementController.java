@@ -72,10 +72,28 @@ public class ResponsableDepartementController {
     }
     
     @PutMapping("/{id}")
-    @Operation(summary = "Mettre à jour un responsable", description = "Met à jour un responsable existant")
+    @Operation(summary = "Mettre à jour un responsable", description = "Met à jour un responsable existant, y compris le changement de département")
     public ResponseEntity<ResponsableDepartementDTO> updateResponsable(@PathVariable Integer id, @RequestBody ResponsableDepartementDTO dto) {
-        ResponsableDepartementDTO updated = responsableDepartementService.update(id, dto);
-        return ResponseEntity.ok(updated);
+        logger.info("=== DEBUG: updateResponsable called for ID: " + id + " ===");
+        logger.info("=== DEBUG: Request DTO: " + dto.toString() + " ===");
+        
+        try {
+            ResponsableDepartementDTO updated = responsableDepartementService.update(id, dto);
+            logger.info("=== DEBUG: updateResponsable completed successfully ===");
+            return ResponseEntity.ok(updated);
+        } catch (RuntimeException e) {
+            logger.error("=== ERROR in updateResponsable ===");
+            logger.error("Error message: " + e.getMessage());
+            logger.error("Error type: " + e.getClass().getSimpleName());
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(null);
+        } catch (Exception e) {
+            logger.error("=== UNEXPECTED ERROR in updateResponsable ===");
+            logger.error("Error message: " + e.getMessage());
+            logger.error("Error type: " + e.getClass().getSimpleName());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(null);
+        }
     }
     
     @DeleteMapping("/{id}")
