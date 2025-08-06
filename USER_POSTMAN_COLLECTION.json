@@ -1,0 +1,523 @@
+{
+	"info": {
+		"_postman_id": "user-api-collection",
+		"name": "CIH User APIs (Responsable Département)",
+		"description": "Collection complète des APIs pour les utilisateurs (responsables département) du système CIH",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Dashboard",
+			"item": [
+				{
+					"name": "Get User Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/user/dashboard?annee=2024",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"dashboard"
+							],
+							"query": [
+								{
+									"key": "annee",
+									"value": "2024",
+									"description": "Année pour filtrer les données (optionnel, défaut: année courante)"
+								}
+							]
+						},
+						"description": "Récupère le tableau de bord complet de l'utilisateur connecté avec toutes les statistiques de son département"
+					},
+					"response": []
+				}
+			],
+			"description": "APIs pour le tableau de bord utilisateur"
+		},
+		{
+			"name": "Profile Management",
+			"item": [
+				{
+					"name": "Get User Profile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/user/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"profile"
+							]
+						},
+						"description": "Récupère les informations complètes du profil de l'utilisateur connecté"
+					},
+					"response": []
+				},
+				{
+					"name": "Update User Profile",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nom\": \"Jean Dupont\",\n  \"email\": \"jean.dupont@company.com\",\n  \"matricule\": \"EMP001\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/user/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"profile"
+							]
+						},
+						"description": "Met à jour les informations du profil de l'utilisateur connecté"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Password",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"currentPassword\": \"oldPassword123\",\n  \"newPassword\": \"newPassword123\",\n  \"confirmPassword\": \"newPassword123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/user/password",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"password"
+							]
+						},
+						"description": "Change le mot de passe de l'utilisateur connecté"
+					},
+					"response": []
+				}
+			],
+			"description": "APIs pour la gestion du profil utilisateur"
+		},
+		{
+			"name": "Password Management",
+			"item": [
+				{
+					"name": "Forgot Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"jean.dupont@company.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/user/forgot-password",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"forgot-password"
+							]
+						},
+						"description": "Envoie un email de réinitialisation de mot de passe"
+					},
+					"response": []
+				},
+				{
+					"name": "Reset Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"eyJhbGciOiJIUzI1NiJ9...\",\n  \"newPassword\": \"newPassword123\",\n  \"confirmPassword\": \"newPassword123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/user/reset-password",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"reset-password"
+							]
+						},
+						"description": "Réinitialise le mot de passe avec un token valide"
+					},
+					"response": []
+				}
+			],
+			"description": "APIs pour la gestion des mots de passe"
+		},
+		{
+			"name": "Expense Management",
+			"item": [
+				{
+					"name": "Get User Department Expenses",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/user/depenses?annee=2024&status=VALID&prestataire=TechStore",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"depenses"
+							],
+							"query": [
+								{
+									"key": "annee",
+									"value": "2024",
+									"description": "Année pour filtrer (optionnel, défaut: année courante)"
+								},
+								{
+									"key": "status",
+									"value": "VALID",
+									"description": "Statut des dépenses (EN_ATTENTE, VALID, INVALID)"
+								},
+								{
+									"key": "prestataire",
+									"value": "TechStore",
+									"description": "Nom du prestataire pour filtrer"
+								}
+							]
+						},
+						"description": "Récupère toutes les dépenses du département de l'utilisateur connecté avec filtres"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Specific Expense",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/user/depenses/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"depenses",
+								"1"
+							]
+						},
+						"description": "Récupère une dépense spécifique du département de l'utilisateur connecté"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Expense",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"titre\": \"Achat matériel informatique\",\n  \"description\": \"Ordinateurs et périphériques\",\n  \"type\": \"MATERIEL\",\n  \"date\": \"2024-01-15\",\n  \"montant\": 5000.0,\n  \"prestataire\": \"TechStore\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/user/depenses",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"depenses"
+							]
+						},
+						"description": "Crée une nouvelle dépense pour le département de l'utilisateur connecté"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Expense",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"titre\": \"Achat matériel informatique mis à jour\",\n  \"description\": \"Ordinateurs et périphériques mis à jour\",\n  \"type\": \"MATERIEL\",\n  \"date\": \"2024-01-15\",\n  \"montant\": 5500.0,\n  \"prestataire\": \"TechStore\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/user/depenses/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"depenses",
+								"1"
+							]
+						},
+						"description": "Met à jour une dépense du département de l'utilisateur connecté"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Expense",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/user/depenses/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"depenses",
+								"1"
+							]
+						},
+						"description": "Supprime une dépense du département de l'utilisateur connecté"
+					},
+					"response": []
+				}
+			],
+			"description": "APIs pour la gestion des dépenses"
+		},
+		{
+			"name": "Analytics",
+			"item": [
+				{
+					"name": "Get User Department Analytics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/user/analytics?annee=2024",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"analytics"
+							],
+							"query": [
+								{
+									"key": "annee",
+									"value": "2024",
+									"description": "Année pour filtrer (optionnel, défaut: année courante)"
+								}
+							]
+						},
+						"description": "Récupère les statistiques détaillées du département de l'utilisateur connecté"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Prestataires",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/user/prestataires",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"prestataires"
+							]
+						},
+						"description": "Récupère la liste unique des prestataires utilisés par le département de l'utilisateur connecté"
+					},
+					"response": []
+				}
+			],
+			"description": "APIs pour les analytics et statistiques"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "jwt_token",
+			"value": "your-jwt-token-here",
+			"type": "string"
+		}
+	]
+} 
