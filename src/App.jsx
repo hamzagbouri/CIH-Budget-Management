@@ -12,6 +12,7 @@ import AdminValidationDepenses from './pages/AdminValidationDepenses';
 import AdminStats from './pages/AdminStats';
 import AdminBudgets from './pages/AdminBudgets';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminAuditTrail from './pages/AdminAuditTrail';
 import UserProfile from './pages/UserProfile';
 import { AuthProvider } from './context/AuthContext';
 import { RoleProvider } from './context/RoleContext';
@@ -94,6 +95,11 @@ function App() {
             <Route path="/admin/budgets" element={
               <ProtectedRoute allowedRoles={['ADMIN']}>
                 <AdminBudgets />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/audit-trail" element={
+              <ProtectedRoute allowedRoles={['ADMIN']}>
+                <AdminAuditTrail />
               </ProtectedRoute>
             } />
             

@@ -11,4 +11,5 @@ export { adminBudgetService } from './adminBudgetService';
 export { adminExpenseService } from './adminExpenseService';
 export { userDashboardService } from './userDashboardService';
 export { userExpenseService } from './userExpenseService';
-export { userAnalyticsService } from './userAnalyticsService'; 
+export { userAnalyticsService } from './userAnalyticsService';
+export { responsableService } from './responsableService'; 

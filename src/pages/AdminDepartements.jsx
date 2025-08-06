@@ -13,6 +13,30 @@ import { adminDashboardService, departmentService } from '../services';
 const columns = [
   { key: 'nom', label: 'Département', sortable: true },
   { 
+    key: 'description', 
+    label: 'Description', 
+    sortable: true,
+    render: (value) => value || '-'
+  },
+  { 
+    key: 'budget', 
+    label: 'Budget (DH)', 
+    sortable: true,
+    render: (value) => (value || 0).toLocaleString() + ' DH'
+  },
+  { 
+    key: 'actif', 
+    label: 'Statut', 
+    sortable: true,
+    render: (value) => (
+      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+        value ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+      }`}>
+        {value ? 'Actif' : 'Inactif'}
+      </span>
+    )
+  },
+  { 
     key: 'responsableNom', 
     label: 'Responsable', 
     sortable: true,
@@ -67,10 +91,9 @@ export default function AdminDepartements() {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ 
     nom: '', 
-    email: '', 
-    matricule: '', 
-    departementId: '', 
-    annee: new Date().getFullYear() 
+    description: '', 
+    budget: '', 
+    actif: true 
   });
   const [editId, setEditId] = useState(null);
   const [errors, setErrors] = useState({});
@@ -93,7 +116,10 @@ export default function AdminDepartements() {
         pourcentageUtilisation: dept.pourcentageUtilisation || 0,
         responsableNom: dept.responsableNom || 'Non assigné',
         responsableEmail: dept.responsableEmail || '',
-        responsableMatricule: dept.responsableMatricule || ''
+        responsableMatricule: dept.responsableMatricule || '',
+        description: dept.description || '',
+        budget: dept.budget || 0,
+        actif: dept.actif !== undefined ? dept.actif : true
       }));
       
       setDepartements(enrichedData);
@@ -114,34 +140,49 @@ export default function AdminDepartements() {
   };
 
   const handleEdit = (row) => {
-    setEditId(row.id);
     setForm({
-      nom: row.nom,
-      email: row.responsableEmail || '',
-      matricule: row.responsableMatricule || '',
-      departementId: row.id,
-      annee: selectedYear
+      nom: row.nom || '',
+      description: row.description || '',
+      budget: row.budget || '',
+      actif: row.actif !== undefined ? row.actif : true
     });
+    setEditId(row.id);
     setShowModal(true);
   };
 
   const handleDelete = async (row) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce département ?')) {
-      return;
+    if (window.confirm(`Êtes-vous sûr de vouloir supprimer le département "${row.nom}" ?`)) {
+      try {
+        await departmentService.deleteDepartment(row.id);
+        success('Succès', 'Département supprimé avec succès');
+        fetchData();
+      } catch (error) {
+        showError('Erreur', error.message || 'Erreur lors de la suppression');
+      }
     }
+  };
 
-    try {
-      await departmentService.deleteDepartment(row.id);
-      success('Succès', 'Département supprimé avec succès');
-      fetchData();
-    } catch (error) {
-      showError('Erreur', error.message || 'Erreur lors de la suppression');
+  const handleToggleStatus = async (row) => {
+    const newStatus = !row.actif;
+    const action = newStatus ? 'activer' : 'désactiver';
+    
+    if (window.confirm(`Êtes-vous sûr de vouloir ${action} le département "${row.nom}" ?`)) {
+      try {
+        await departmentService.toggleDepartmentStatus(row.id, newStatus);
+        success('Succès', `Département ${action} avec succès`);
+        fetchData();
+      } catch (error) {
+        showError('Erreur', error.message || `Erreur lors de la ${action}`);
+      }
     }
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setForm(prev => ({ 
+      ...prev, 
+      [name]: type === 'checkbox' ? checked : value 
+    }));
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -152,11 +193,8 @@ export default function AdminDepartements() {
     if (!form.nom || form.nom.trim().length < 2) {
       errs.nom = 'Nom du département requis (min 2 caractères)';
     }
-    if (!form.email || !form.email.includes('@')) {
-      errs.email = 'Email valide requis';
-    }
-    if (!form.matricule || form.matricule.trim().length < 3) {
-      errs.matricule = 'Matricule requis (min 3 caractères)';
+    if (form.budget && (isNaN(form.budget) || parseFloat(form.budget) < 0)) {
+      errs.budget = 'Le budget doit être un nombre positif';
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -168,11 +206,10 @@ export default function AdminDepartements() {
 
     try {
       const departmentData = {
-        nom: form.nom,
-        email: form.email,
-        matricule: form.matricule,
-        departementId: form.departementId,
-        annee: selectedYear
+        nom: form.nom.trim(),
+        description: form.description.trim() || undefined,
+        budget: form.budget ? parseFloat(form.budget) : undefined,
+        actif: form.actif
       };
 
       if (editId) {
@@ -180,13 +217,13 @@ export default function AdminDepartements() {
         await departmentService.updateDepartment(editId, departmentData);
         success('Succès', 'Département mis à jour avec succès');
       } else {
-        // Create new department with responsible
-        await adminDashboardService.addDepartmentWithResponsable(departmentData);
+        // Create new department
+        await departmentService.createDepartment(departmentData);
         success('Succès', 'Département créé avec succès');
       }
 
       setShowModal(false);
-      setForm({ nom: '', email: '', matricule: '', departementId: '', annee: selectedYear });
+      setForm({ nom: '', description: '', budget: '', actif: true });
       setEditId(null);
       setErrors({});
       fetchData();
@@ -198,13 +235,14 @@ export default function AdminDepartements() {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditId(null);
-    setForm({ nom: '', email: '', matricule: '', departementId: '', annee: selectedYear });
+    setForm({ nom: '', description: '', budget: '', actif: true });
     setErrors({});
   };
 
   // Filter departments based on search
   const filteredDepartements = departements.filter(dep => 
     dep.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (dep.description && dep.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (dep.responsableNom && dep.responsableNom.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (dep.responsableEmail && dep.responsableEmail.toLowerCase().includes(searchTerm.toLowerCase()))
   );
@@ -213,6 +251,7 @@ export default function AdminDepartements() {
   const totalBudget = departements.reduce((sum, d) => sum + (d.budgetTotal || 0), 0);
   const totalRestant = departements.reduce((sum, d) => sum + (d.budgetRestant || 0), 0);
   const nbDepartements = departements.length;
+  const nbDepartementsActifs = departements.filter(d => d.actif).length;
   const nbDepartementsAvecResponsable = departements.filter(d => d.responsableNom && d.responsableNom !== 'Non assigné').length;
 
   if (loading) {
@@ -269,8 +308,8 @@ export default function AdminDepartements() {
             color="bg-green-100" 
           />
           <StatCard 
-            label="Départements" 
-            value={nbDepartements.toString()} 
+            label="Départements Actifs" 
+            value={nbDepartementsActifs.toString()} 
             icon="apartment" 
             color="bg-purple-100" 
           />
@@ -288,7 +327,7 @@ export default function AdminDepartements() {
             <div className="flex-1">
               <input
                 type="text"
-                placeholder="Rechercher par nom, responsable ou email..."
+                placeholder="Rechercher par nom, description, responsable ou email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -308,6 +347,23 @@ export default function AdminDepartements() {
             enablePagination
             searchable
             pageSize={10}
+            customActions={(row) => (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleToggleStatus(row)}
+                  className={`px-3 py-1 rounded text-sm transition-colors ${
+                    row.actif 
+                      ? 'bg-orange-600 hover:bg-orange-700 text-white' 
+                      : 'bg-green-600 hover:bg-green-700 text-white'
+                  }`}
+                  title={row.actif ? 'Désactiver' : 'Activer'}
+                >
+                  <span className="material-icons text-sm">
+                    {row.actif ? 'block' : 'check_circle'}
+                  </span>
+                </button>
+              </div>
+            )}
           />
         </div>
 
@@ -315,32 +371,52 @@ export default function AdminDepartements() {
         <Modal open={showModal} onClose={handleCloseModal} title={editId ? 'Modifier Département' : 'Nouveau Département'}>
           <form onSubmit={handleSubmit} className="space-y-4">
             <FormInput
-              label="Nom du Département"
+              label="Nom du Département *"
               name="nom"
               type="text"
               value={form.nom}
               onChange={handleChange}
               error={errors.nom}
               required
+              placeholder="Ex: Département IT"
             />
+            
             <FormInput
-              label="Email du Responsable"
-              name="email"
-              type="email"
-              value={form.email}
+              label="Description"
+              name="description"
+              value={form.description}
               onChange={handleChange}
-              error={errors.email}
-              required
+              error={errors.description}
+              placeholder="Description du département (optionnel)"
+              multiline={true}
             />
+            
             <FormInput
-              label="Matricule du Responsable"
-              name="matricule"
-              type="text"
-              value={form.matricule}
+              label="Budget (DH)"
+              name="budget"
+              type="number"
+              value={form.budget}
               onChange={handleChange}
-              error={errors.matricule}
-              required
+              error={errors.budget}
+              placeholder="0.00"
+              min="0"
+              step="0.01"
             />
+            
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="actif"
+                name="actif"
+                checked={form.actif}
+                onChange={handleChange}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <label htmlFor="actif" className="text-sm font-medium text-gray-700">
+                Département actif
+              </label>
+            </div>
+            
             <div className="flex gap-4 pt-4">
               <button
                 type="submit"

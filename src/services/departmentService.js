@@ -49,5 +49,15 @@ export const departmentService = {
     } catch (error) {
       throw error.response?.data || { message: 'Erreur lors de la suppression du département' };
     }
+  },
+
+  // Toggle department status (activate/deactivate)
+  async toggleDepartmentStatus(id, actif) {
+    try {
+      const response = await apiClient.put(`/api/departements/${id}`, { actif });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Erreur lors de la modification du statut du département' };
+    }
   }
 }; 

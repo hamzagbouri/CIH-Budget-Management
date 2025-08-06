@@ -9,6 +9,7 @@ const links = [
   { to: '/admin/budgets', label: 'Gestion Budgets', icon: 'account_balance_wallet' },
   { to: '/admin/validation-depenses', label: 'Validation Dépenses', icon: 'fact_check' },
   { to: '/admin/stats', label: 'Statistiques', icon: 'insights' },
+  { to: '/admin/audit-trail', label: 'Piste d\'Audit', icon: 'history' },
 ];
 
 export default function AdminSidebar() {
