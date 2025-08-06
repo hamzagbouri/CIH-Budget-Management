@@ -16,10 +16,6 @@ public class Utilisateur {
     private String role;
     private String matricule;
 
-    @ManyToOne
-    @JoinColumn(name = "departement_id")
-    private Departement departement;
-
     @OneToMany(mappedBy = "utilisateur")
     private List<Notification> notifications;
 } 

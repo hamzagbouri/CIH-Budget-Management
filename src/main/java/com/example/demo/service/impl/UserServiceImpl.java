@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.stream.Collectors;
+import java.util.Optional;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -57,11 +58,9 @@ public class UserServiceImpl implements UserService {
         
         // Get current user
         Utilisateur user = getCurrentUser();
-        Departement departement = user.getDepartement();
         
-        if (departement == null) {
-            throw new RuntimeException("Aucun département associé à cet utilisateur");
-        }
+        // Get the correct department for this user
+        Departement departement = getUserDepartment(user, finalAnnee);
         
         UserDashboardDTO dashboard = new UserDashboardDTO();
         dashboard.setDepartementId(departement.getId());
@@ -158,11 +157,16 @@ public class UserServiceImpl implements UserService {
         profile.setMatricule(user.getMatricule());
         profile.setRole(user.getRole());
         
-        // Current department
-        if (user.getDepartement() != null) {
+        // Current department - get from ResponsableDepartement table
+        int currentYear = LocalDate.now().getYear();
+        Optional<ResponsableDepartement> currentResponsibility = responsableDepartementRepository
+                .findByUtilisateurIdAndAnnee(user.getId(), currentYear)
+                .filter(rd -> rd.getActif());
+        
+        if (currentResponsibility.isPresent()) {
             DepartementDTO departementDTO = new DepartementDTO();
-            departementDTO.setId(user.getDepartement().getId());
-            departementDTO.setNom(user.getDepartement().getNom());
+            departementDTO.setId(currentResponsibility.get().getDepartement().getId());
+            departementDTO.setNom(currentResponsibility.get().getDepartement().getNom());
             profile.setDepartementActuel(departementDTO);
         }
         
@@ -288,11 +292,7 @@ public class UserServiceImpl implements UserService {
         
         final Integer finalAnnee = annee;
         Utilisateur user = getCurrentUser();
-        Departement departement = user.getDepartement();
-        
-        if (departement == null) {
-            throw new RuntimeException("Aucun département associé à cet utilisateur");
-        }
+        Departement departement = getUserDepartment(user, finalAnnee);
         
         List<Depense> depenses = depenseRepository.findByDepartementIdAndAnnee(departement.getId(), finalAnnee);
         
@@ -317,11 +317,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public DepenseDTO getUserDepartmentExpense(Integer id) {
         Utilisateur user = getCurrentUser();
-        Departement departement = user.getDepartement();
-        
-        if (departement == null) {
-            throw new RuntimeException("Aucun département associé à cet utilisateur");
-        }
+        Departement departement = getUserDepartment(user, LocalDate.now().getYear());
         
         Depense depense = depenseRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Dépense non trouvée"));
@@ -337,11 +333,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public DepenseDTO createUserDepartmentExpense(DepenseDTO depenseDTO) {
         Utilisateur user = getCurrentUser();
-        Departement departement = user.getDepartement();
-        
-        if (departement == null) {
-            throw new RuntimeException("Aucun département associé à cet utilisateur");
-        }
+        Departement departement = getUserDepartment(user, LocalDate.now().getYear());
         
         Depense depense = new Depense();
         depense.setTitre(depenseDTO.getTitre());
@@ -360,11 +352,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public DepenseDTO updateUserDepartmentExpense(Integer id, DepenseDTO depenseDTO) {
         Utilisateur user = getCurrentUser();
-        Departement departement = user.getDepartement();
-        
-        if (departement == null) {
-            throw new RuntimeException("Aucun département associé à cet utilisateur");
-        }
+        Departement departement = getUserDepartment(user, LocalDate.now().getYear());
         
         Depense depense = depenseRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Dépense non trouvée"));
@@ -390,11 +378,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public void deleteUserDepartmentExpense(Integer id) {
         Utilisateur user = getCurrentUser();
-        Departement departement = user.getDepartement();
-        
-        if (departement == null) {
-            throw new RuntimeException("Aucun département associé à cet utilisateur");
-        }
+        Departement departement = getUserDepartment(user, LocalDate.now().getYear());
         
         Depense depense = depenseRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Dépense non trouvée"));
@@ -417,11 +401,7 @@ public class UserServiceImpl implements UserService {
         
         final Integer finalAnnee = annee;
         Utilisateur user = getCurrentUser();
-        Departement departement = user.getDepartement();
-        
-        if (departement == null) {
-            throw new RuntimeException("Aucun département associé à cet utilisateur");
-        }
+        Departement departement = getUserDepartment(user, finalAnnee);
         
         // Get budget
         BudgetDepartement budgetDepartement = budgetDepartementRepository
@@ -471,11 +451,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public List<String> getPrestataires() {
         Utilisateur user = getCurrentUser();
-        Departement departement = user.getDepartement();
-        
-        if (departement == null) {
-            throw new RuntimeException("Aucun département associé à cet utilisateur");
-        }
+        Departement departement = getUserDepartment(user, LocalDate.now().getYear());
         
         List<Depense> depenses = depenseRepository.findByDepartementId(departement.getId());
         
@@ -487,6 +463,16 @@ public class UserServiceImpl implements UserService {
     }
 
     // ==================== HELPER METHODS ====================
+    
+    private Departement getUserDepartment(Utilisateur user, Integer annee) {
+        // Get current active department assignment from ResponsableDepartement table
+        ResponsableDepartement currentResponsibility = responsableDepartementRepository
+                .findByUtilisateurIdAndAnnee(user.getId(), annee)
+                .filter(rd -> rd.getActif())
+                .orElseThrow(() -> new RuntimeException("Aucune assignation active trouvée pour cet utilisateur pour l'année " + annee));
+        
+        return currentResponsibility.getDepartement();
+    }
     
     private Utilisateur getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

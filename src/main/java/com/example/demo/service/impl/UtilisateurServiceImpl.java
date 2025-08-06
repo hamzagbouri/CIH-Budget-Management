@@ -22,7 +22,8 @@ public class UtilisateurServiceImpl implements UtilisateurService {
         dto.setEmail(u.getEmail());
         dto.setRole(u.getRole());
         dto.setMatricule(u.getMatricule());
-        if (u.getDepartement() != null) dto.setDepartementId(u.getDepartement().getId());
+        // Note: USER role users don't have departementId in Utilisateur table
+        // Their department assignment is only in ResponsableDepartement table
         return dto;
     }
 

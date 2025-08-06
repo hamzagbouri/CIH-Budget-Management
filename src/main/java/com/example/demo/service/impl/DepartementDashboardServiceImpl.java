@@ -7,9 +7,11 @@ import com.example.demo.entity.Budget;
 import com.example.demo.entity.BudgetDepartement;
 import com.example.demo.entity.Departement;
 import com.example.demo.entity.Depense;
+import com.example.demo.entity.ResponsableDepartement;
 import com.example.demo.entity.Utilisateur;
 import com.example.demo.repository.BudgetDepartementRepository;
 import com.example.demo.repository.DepenseRepository;
+import com.example.demo.repository.ResponsableDepartementRepository;
 import com.example.demo.repository.UtilisateurRepository;
 import com.example.demo.service.DepartementDashboardService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,30 +33,41 @@ public class DepartementDashboardServiceImpl implements DepartementDashboardServ
 
     @Autowired
     private DepenseRepository depenseRepository;
+    
+    @Autowired
+    private ResponsableDepartementRepository responsableDepartementRepository;
 
     @Override
     public DepartementDashboardDTO getDepartementDashboard(Integer userId) {
         DepartementDashboardDTO dashboard = new DepartementDashboardDTO();
 
-        // Get user and their department
+        // Get user
         Optional<Utilisateur> userOpt = utilisateurRepository.findById(userId);
         if (userOpt.isEmpty()) {
             throw new RuntimeException("Utilisateur non trouvé");
         }
 
         Utilisateur user = userOpt.get();
-        Departement departement = user.getDepartement();
-
-        if (departement == null) {
-            throw new RuntimeException("L'utilisateur n'est pas assigné à un département");
+        
+        // Get current year
+        int currentYear = LocalDate.now().getYear();
+        
+        // Get user's department from ResponsableDepartement table
+        Optional<ResponsableDepartement> responsableOpt = responsableDepartementRepository
+                .findByUtilisateurIdAndAnnee(userId, currentYear);
+        
+        if (responsableOpt.isEmpty() || !responsableOpt.get().getActif()) {
+            throw new RuntimeException("L'utilisateur n'est pas assigné à un département pour l'année " + currentYear);
         }
+        
+        ResponsableDepartement responsable = responsableOpt.get();
+        Departement departement = responsable.getDepartement();
 
         // Set department info
         dashboard.setDepartementId(departement.getId());
         dashboard.setDepartementNom(departement.getNom());
 
         // Get current year budget for the department
-        int currentYear = LocalDate.now().getYear();
         Optional<BudgetDepartement> budgetDeptOpt = budgetDepartementRepository
                 .findByDepartementIdAndAnnee(departement.getId(), currentYear);
 

@@ -61,16 +61,15 @@ public class AuthServiceImpl implements AuthService {
             // Generate JWT token
             String token = jwtUtil.generateToken(user.getEmail(), user.getRole(), user.getId());
             
-            // Convert user to DTO
+            // Convert to DTO for response
             UtilisateurDTO userDTO = new UtilisateurDTO();
             userDTO.setId(user.getId());
             userDTO.setNom(user.getNom());
             userDTO.setEmail(user.getEmail());
             userDTO.setRole(user.getRole());
             userDTO.setMatricule(user.getMatricule());
-            if (user.getDepartement() != null) {
-                userDTO.setDepartementId(user.getDepartement().getId());
-            }
+            // Note: USER role users don't have departementId in Utilisateur table
+            // Their department assignment is only in ResponsableDepartement table
             
             // Set response
             response.setSuccess(true);
@@ -138,13 +137,8 @@ public class AuthServiceImpl implements AuthService {
             newUser.setRole(registerRequest.getRole() != null ? registerRequest.getRole() : "USER");
             newUser.setMatricule(registerRequest.getMatricule().trim());
             
-            // Set department if provided
-            if (registerRequest.getDepartementId() != null) {
-                Optional<Departement> departementOpt = departementRepository.findById(registerRequest.getDepartementId());
-                if (departementOpt.isPresent()) {
-                    newUser.setDepartement(departementOpt.get());
-                }
-            }
+            // Note: USER role users don't have a departement field in Utilisateur table
+            // Their department assignment is only in ResponsableDepartement table
             
             // Save user
             Utilisateur savedUser = utilisateurRepository.save(newUser);
@@ -156,9 +150,7 @@ public class AuthServiceImpl implements AuthService {
             userDTO.setEmail(savedUser.getEmail());
             userDTO.setRole(savedUser.getRole());
             userDTO.setMatricule(savedUser.getMatricule());
-            if (savedUser.getDepartement() != null) {
-                userDTO.setDepartementId(savedUser.getDepartement().getId());
-            }
+            // Note: USER role users don't have departementId in Utilisateur table
             
             // Set response
             response.setSuccess(true);

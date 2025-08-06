@@ -333,7 +333,8 @@ public class ResponsableDepartementServiceImpl implements ResponsableDepartement
         utilisateur.setMatricule(request.getMatricule());
         utilisateur.setRole("USER");
         utilisateur.setPassword(passwordEncoder.encode(generatedPassword));
-        utilisateur.setDepartement(departement);
+        // Note: USER role users don't have a departement field in Utilisateur table
+        // Their department assignment is only in ResponsableDepartement table
         
         utilisateur = utilisateurRepository.save(utilisateur);
         logger.info("=== DEBUG: User created successfully ===");
@@ -405,6 +406,9 @@ public class ResponsableDepartementServiceImpl implements ResponsableDepartement
             // Get the new department
             Departement newDepartement = departementRepository.findById(dto.getDepartementId())
                     .orElseThrow(() -> new RuntimeException("Département non trouvé avec l'ID: " + dto.getDepartementId()));
+            
+            // Note: For USER role, we don't update Utilisateur.departement
+            // The department assignment is only in ResponsableDepartement table
             
             // Update the department
             responsableDepartement.setDepartement(newDepartement);
@@ -541,6 +545,9 @@ public class ResponsableDepartementServiceImpl implements ResponsableDepartement
         
         Departement departement = departementRepository.findById(departementId)
                 .orElseThrow(() -> new RuntimeException("Département non trouvé"));
+        
+        // Note: For USER role, we don't set Utilisateur.departement
+        // The department assignment is only in ResponsableDepartement table
         
         ResponsableDepartement responsableDepartement = new ResponsableDepartement();
         responsableDepartement.setAnnee(annee);

@@ -13,9 +13,6 @@ public class Departement {
     private String nom;
 
     @OneToMany(mappedBy = "departement")
-    private List<Utilisateur> utilisateurs;
-
-    @OneToMany(mappedBy = "departement")
     private List<BudgetDepartement> budgetDepartements;
 
     @OneToMany(mappedBy = "departement")
@@ -36,14 +33,6 @@ public class Departement {
 
     public void setNom(String nom) {
         this.nom = nom;
-    }
-
-    public List<Utilisateur> getUtilisateurs() {
-        return utilisateurs;
-    }
-
-    public void setUtilisateurs(List<Utilisateur> utilisateurs) {
-        this.utilisateurs = utilisateurs;
     }
 
     public List<BudgetDepartement> getBudgetDepartements() {

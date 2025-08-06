@@ -5,10 +5,12 @@ import com.example.demo.entity.BudgetDepartement;
 import com.example.demo.entity.Departement;
 import com.example.demo.entity.Depense;
 import com.example.demo.entity.Utilisateur;
+import com.example.demo.entity.ResponsableDepartement;
 import com.example.demo.repository.BudgetDepartementRepository;
 import com.example.demo.repository.DepartementRepository;
 import com.example.demo.repository.DepenseRepository;
 import com.example.demo.repository.UtilisateurRepository;
+import com.example.demo.repository.ResponsableDepartementRepository;
 import com.example.demo.service.DepenseService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -31,6 +33,9 @@ public class DepenseServiceImpl implements DepenseService {
 
     @Autowired
     private UtilisateurRepository utilisateurRepository;
+
+    @Autowired
+    private ResponsableDepartementRepository responsableDepartementRepository;
 
     private DepenseDTO toDTO(Depense d) {
         DepenseDTO dto = new DepenseDTO();
@@ -192,9 +197,21 @@ public class DepenseServiceImpl implements DepenseService {
     @Override
     public List<DepenseDTO> findForCurrentUserDepartement(String email, Integer annee, String status) {
         Utilisateur user = utilisateurRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
-        Departement departement = user.getDepartement();
-        if (departement == null) throw new RuntimeException("Aucun département associé à cet utilisateur");
+        
+        // Get current year if not provided
         int year = (annee != null) ? annee : java.time.LocalDate.now().getYear();
+        
+        // Get user's department from ResponsableDepartement table
+        Optional<ResponsableDepartement> responsableOpt = responsableDepartementRepository
+                .findByUtilisateurIdAndAnnee(user.getId(), year);
+        
+        if (responsableOpt.isEmpty() || !responsableOpt.get().getActif()) {
+            throw new RuntimeException("L'utilisateur n'est pas assigné à un département pour l'année " + year);
+        }
+        
+        ResponsableDepartement responsable = responsableOpt.get();
+        Departement departement = responsable.getDepartement();
+        
         List<Depense> depenses;
         if (status != null && !status.isEmpty()) {
             depenses = depenseRepository.findByDepartementAndStatus(departement, status)
